@@ -16,8 +16,9 @@ end
 
 function TensorLoader:shuffle()
    local indices = torch.LongTensor():randperm(self:size())
-   self.inputs = self.inputs:index(1, indices)
-   self.targets = self.targets:index(1, indices)
+   self.inputs = torchx.recursiveIndex(nil, self.inputs, 1, indices)
+   self.targets = torchx.recursiveIndex(nil, self.targets, 1, indices)
+   return self, indices
 end
 
 function TensorLoader:split(ratio)
@@ -42,13 +43,13 @@ function TensorLoader:size()
    return torchx.recursiveBatchSize(self.inputs)
 end
 
-function TensorLoader:inputSize(excludedim)
+function TensorLoader:isize(excludedim)
    -- by default, batch dimension is excluded
    excludedim = excludedim == nil and 1 or excludedim
    return torchx.recursiveSize(self.inputs, excludedim)
 end
 
-function TensorLoader:targetSize()
+function TensorLoader:tsize(excludedim)
    -- by default, batch dimension is excluded
    excludedim = excludedim == nil and 1 or excludedim
    return torchx.recursiveSize(self.targets, excludedim)

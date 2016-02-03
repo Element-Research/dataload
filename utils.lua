@@ -19,11 +19,11 @@ function dl.downloadfile(dstdir, srcurl, existfile)
       dl.withcwd(
          dstdir, 
          function() 
-            local protocol, scpurl, filename = url:match('(.-)://(.*)/(.-)$')
+            local protocol, scpurl, filename = srcurl:match('(.-)://(.*)/(.-)$')
             if protocol == 'scp' then
                 os.execute(string.format('%s %s %s', 'scp', scpurl .. '/' .. filename, filename))
             else
-                os.execute('wget ' .. url)
+                os.execute('wget ' .. srcurl)
             end
          end
       )

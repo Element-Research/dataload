@@ -38,7 +38,7 @@ function dl.loadMNIST(datapath, validratio, scale, srcurl)
       targets:add(1)
       
       -- from bhwc to bchw
-      inputs:resize(inputs:size(1), 28, 28, 1)
+      inputs:resize(inputs:size(1), 1, 28, 28)
       
       -- wrap into loader
       local loader = dl.TensorLoader(inputs, targets)
