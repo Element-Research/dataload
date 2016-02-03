@@ -104,6 +104,100 @@ function dltest.TensorLoader()
    mytester:assertTensorEq(ds2.targets[2][1], ds.targets[2][1]:sub(21,100), 0.0000001)
 end
 
+function dltest.ImageClass()
+   local datapath = paths.concat(dl.DATA_PATH, "_unittest_")
+   
+   if not paths.dirp(datapath) then
+      -- create a dummy dataset based on MNIST
+      local mnist = dl.loadMNIST()
+      
+      
+      os.execute("rm -r "..datapath)
+      
+      paths.mkdir(datapath)
+      
+      local buffer
+      local inputs, targets
+      for i=1,10 do
+         local classpath = paths.concat(datapath, "class"..i)
+         paths.mkdir(classpath)
+         inputs, targets = mnist:sample(100, inputs, targets)
+         for j=1,100 do
+            local input = inputs[j]
+            if math.random() < 0.5 then
+               buffer = buffer or inputs.new()
+               if math.random() < 0.5 then 
+                  buffer:resize(1, 32, 28)
+               else
+                  buffer:resize(1, 28, 32)
+               end
+               image.scale(buffer, input)
+               input = buffer
+            end
+            image.save(paths.concat(classpath, "image"..j..".jpg"), input)
+         end
+      end
+   end
+   
+   -- Note that I can't really test scaling as gm and image scale differently
+   local ds = dl.ImageClass(datapath, {1, 28, 28}, {1, 28, 28}, nil, nil, false)
+   
+   -- test index
+   local inputs, targets = ds:index(torch.LongTensor():range(201,300))
+   local inputs2, targets2 = inputs:clone():zero(), targets:clone():zero()
+   local buffer
+   
+   for i=201,300 do
+      local imgpath = ffi.string(torch.data(ds.imagePath[i]))      
+      local img = image.load(imgpath):float()
+      
+      -- also make sure that the resize happens the right way
+      local gimg = ds:loadImage(imgpath)
+      local gimg2 = gimg:toTensor('float','R','DHW', true)
+      
+      buffer = buffer or torch.FloatTensor()
+      buffer:resizeAs(img) 
+      image.scale(buffer, img)
+      
+      mytester:assertTensorEq(gimg2, buffer, 0.00001)
+      
+      image.scale(inputs2[i-200], buffer)
+      targets2[i-200] = ds.iclasses[string.match(imgpath, "(class%d+)/image%d+[.]jpg$")]
+   end
+   
+   mytester:assertTensorEq(inputs, inputs2, 0.000001)
+   mytester:assertTensorEq(targets, targets2, 0.000001)
+   
+   -- test size
+   mytester:assert(ds:size() == 1000)
+   
+   -- test sample
+   local inputs_, targets_ = inputs, targets
+   inputs, targets = ds:sample(100, inputs, targets)
+   mytester:assert(torch.pointer(inputs:storage():data()) == torch.pointer(inputs_:storage():data()))
+   mytester:assert(torch.pointer(targets:storage():data()) == torch.pointer(targets_:storage():data()))
+   mytester:assertTableEq(inputs:size():totable(), {100,1,28,28}, 0.000001)
+   mytester:assertTableEq(targets:size():totable(), {100}, 0.000001)
+   mytester:assert(targets:min() >= 1)
+   mytester:assert(targets:max() <= 10)
+   mytester:assert(inputs:view(100,-1):sum(2):min() > 0)
+   
+   -- test sampleTrain
+   ds.samplesize = {1,14,14}
+   inputs, targets = ds:sub(1, 5, inputs, targets, ds.sampleTrain)
+   local inputs2, targets2 = ds:sub(1, 5)
+   for i=1,5 do
+      mytester:assertTensorNe(inputs, inputs2, 0.0000001)
+   end
+   mytester:assertTensorEq(targets, targets2, 0.0000001)
+   
+   -- test sampleTest
+   inputs, targets = ds:sub(1, 5, inputs, targets, ds.sampleTest)
+   mytester:assertTableEq(inputs:size():totable(), {50, 1, 14, 14}, 0.0000001)
+   mytester:assertTableEq(targets:size():totable(), {50}, 0.0000001)
+   mytester:assert(targets:view(5,10):float():std(2):sum() < 0.0000001)
+end
+
 
 function dl.test(tests)
    math.randomseed(os.time())
