@@ -45,8 +45,9 @@ function DataLoader:tsize(excludedim)
 end
 
 -- called by MultiThread before serializing the DataLoader to threads
-function DataLoader:zeroBuffers()
+function DataLoader:reset()
    self._indices = nil
+   self._start = nil
 end
 
 -- collect garbage every self.gccount times this method is called 
@@ -56,5 +57,55 @@ function DataLoader:collectgarbage()
    if self.gccount >= self.gcdelay then
       collectgarbage()
       self.gccount = 0
+   end
+end
+
+function DataLoader:clone(...)
+   local f = torch.MemoryFile("rw"):binary()
+   f:writeObject(self)
+   f:seek(1)
+   local clone = f:readObject()
+   f:close()
+   if select('#',...) > 0 then
+      clone:share(self,...)
+   end
+   return clone
+end
+
+-- iterators : subpairs, samplepairs
+
+function DataLoader:subiter(batchsize, epochsize, ...)
+   local dots = {...}
+   local size = self:size()
+   epochsize = epochsize or self:size()
+   self._start = self._start or 1
+   local nsampled = 0
+   local stop
+   
+   local inputs, targets
+   
+   -- build iterator
+   return function()
+      if nsampled >= epochsize then
+         return
+      end
+      
+      local bs = math.min(nsampled+batchsize, epochsize) - nsampled
+      stop = math.min(self._start + bs - 1, size)
+      -- inputs and targets
+      local batch = {self:sub(self._start, stop, inputs, targets, unpack(dots))}
+      -- allows reuse of inputs and targets buffers for next iteration
+      inputs, targets = batch[1], batch[2]
+      
+      bs = stop - self._start + 1
+      nsampled = nsampled + bs
+      self._start = self._start + bs
+      if self._start >= size then
+         self._start = 1
+      end
+      
+      self:collectgarbage()
+      
+      return nsampled, unpack(batch)
    end
 end

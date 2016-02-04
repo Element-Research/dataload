@@ -102,6 +102,63 @@ function dltest.TensorLoader()
    mytester:assertTensorEq(ds1.targets[2][1], ds.targets[2][1]:sub(1,20), 0.0000001)
    mytester:assertTensorEq(ds2.inputs[2][1], ds.inputs[2][1]:sub(21,100), 0.0000001)
    mytester:assertTensorEq(ds2.targets[2][1], ds.targets[2][1]:sub(21,100), 0.0000001)
+   
+   -- test DataLoader:subiter
+   
+   -- should stop after 28 samples
+   local batchsize = 10
+   local epochsize = 28
+   local start, stop = 1, 10
+   local nsampled
+   for k, inputs, targets in ds:subiter(batchsize, epochsize) do
+      local inputs2 = {ds.inputs[1]:sub(start, stop), {ds.inputs[2][1]:sub(start, stop)}}
+      mytester:assertTensorEq(inputs[1], inputs2[1], 0.0000001)
+      mytester:assertTensorEq(inputs[2][1], inputs2[2][1], 0.0000001)
+      start = stop + 1
+      stop = math.min(epochsize, start + batchsize - 1)
+      nsampled = k
+   end
+   mytester:assert(start-1 == 28)
+   mytester:assert(nsampled == epochsize)
+   
+   -- should continue from previous state :
+   local batchsize = 8
+   local epochsize = 16
+   stop = start + batchsize - 1
+   for k, inputs, targets in ds:subiter(batchsize, epochsize) do
+      local inputs2 = {ds.inputs[1]:sub(start, stop), {ds.inputs[2][1]:sub(start, stop)}}
+      mytester:assertTensorEq(inputs[1], inputs2[1], 0.0000001)
+      mytester:assertTensorEq(inputs[2][1], inputs2[2][1], 0.0000001)
+      start = stop + 1
+      stop = math.min(ds:size(), start + batchsize - 1)
+      nsampled = k
+   end
+   mytester:assert(start-1 == 28+16)
+   mytester:assert(nsampled == epochsize)
+   
+   -- should loop back to begining
+   local batchsize = 32
+   local epochsize = 100
+   stop = start + batchsize - 1
+   local i = 0
+   for k, inputs, targets in ds:subiter(batchsize, epochsize) do
+      if start == ds:size() + 1 then
+         start, stop = 1, 32
+      end
+      i = i + 1
+      local inputs2 = {ds.inputs[1]:sub(start, stop), {ds.inputs[2][1]:sub(start, stop)}}
+      mytester:assertTensorEq(inputs[1], inputs2[1], 0.0000001)
+      mytester:assertTensorEq(inputs[2][1], inputs2[2][1], 0.0000001)
+      start = stop + 1
+      stop = math.min(ds:size(), start + batchsize - 1)
+      if i == 3 then
+         stop = start + 11
+      end
+      nsampled = k
+   end
+   
+   mytester:assert(start-1 == 28+16)
+   mytester:assert(nsampled == epochsize)
 end
 
 function dltest.ImageClass()

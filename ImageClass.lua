@@ -214,8 +214,8 @@ function ImageClass:__init(datapath, loadsize, samplesize, samplefunc, sortfunc,
    os.execute('rm -f "' .. combinedFindList .. '"')
 end
 
-function ImageClass:zeroBuffers()
-   self._indices = nil
+function ImageClass:reset()
+   parent.reset(self)
    self.imgBuffer = nil
 end
 
