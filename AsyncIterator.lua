@@ -3,7 +3,7 @@
 -- Decorates a DataLoader to make it multi-threaded.
 ------------------------------------------------------------------------
 local dl = require 'dataload._env'
-local AsyncIterator = torch.class('dl.AsyncIterator', 'dl.DataLoader', dl)
+local AsyncIterator, parent = torch.class('dl.AsyncIterator', 'dl.DataLoader', dl)
 
 function AsyncIterator:__init(dataset, nthread, verbose)
    self.dataset = dataset

@@ -264,9 +264,6 @@ function dltest.AsyncIterator()
    local ds2 = dl.AsyncIterator(ds1,2)
    mytester:assert(true)
    
-   local bs = 10
-   local es = 100
-   
    local batches = {}
    for i, inputs, targets in ds1:subiter() do
       assert(not batches[inputs:sum()])
@@ -285,6 +282,70 @@ function dltest.AsyncIterator()
       batches[inputs:sum()] = nil
    end
    mytester:assert(bidx == 4)
+   
+   ds1:reset()
+   ds2:reset()
+   
+   -- should stop after 28 samples
+   local batchsize = 10
+   local epochsize = 28
+   
+   local batches = {}
+   for i, inputs, targets in ds1:subiter(batchsize, epochsize) do
+      assert(not batches[inputs:sum()])
+      batches[inputs:sum()] = {inputs=inputs:clone(), targets=targets:clone()}
+   end
+   
+   local nsampled
+   for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
+      local batch2 = batches[inputs:sum()]
+      mytester:assert(batch2)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      batches[inputs:sum()] = nil
+      nsampled = k
+   end
+   mytester:assert(nsampled == epochsize)
+   
+   -- should continue from previous state :
+   local batchsize = 8
+   local epochsize = 16
+   
+   local batches = {}
+   for i, inputs, targets in ds1:subiter(batchsize, epochsize) do
+      assert(not batches[inputs:sum()])
+      batches[inputs:sum()] = {inputs=inputs:clone(), targets=targets:clone()}
+   end
+   
+   for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
+      local batch2 = batches[inputs:sum()]
+      mytester:assert(batch2)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      batches[inputs:sum()] = nil
+      nsampled = k
+   end
+   mytester:assert(nsampled == epochsize)
+   
+   -- should loop back to begining
+   local batchsize = 32
+   local epochsize = 100
+   
+   local batches = {}
+   for i, inputs, targets in ds1:subiter(batchsize, epochsize) do
+      assert(not batches[inputs:sum()])
+      batches[inputs:sum()] = {inputs=inputs:clone(), targets=targets:clone()}
+   end
+   
+   for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
+      local batch2 = batches[inputs:sum()]
+      mytester:assert(batch2)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      batches[inputs:sum()] = nil
+      nsampled = k
+   end
+   mytester:assert(nsampled == epochsize)
 end
 
 function dl.test(tests)
