@@ -124,6 +124,9 @@ function AsyncIterator:asyncGet()
 end
 
 -- iterators : subpairs, samplepairs
+
+-- subiter : for iterating over validation and test sets.
+-- Note batches are not necessarily returned in order (because asynchronous) 
 function AsyncIterator:subiter(batchsize, epochsize, ...)
    batchsize = batchsize or 32
    local dots = {...}

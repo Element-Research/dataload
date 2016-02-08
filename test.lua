@@ -159,6 +159,41 @@ function dltest.TensorLoader()
    
    mytester:assert(start-1 == 28+16)
    mytester:assert(nsampled == epochsize)
+   
+   -- test sampleiter 
+   
+   local rowsums = {}
+   for i=1,ds.inputs[1]:size(1) do
+      local sum = ds.inputs[1][i]:sum()
+      assert(not rowsums[sum])
+      rowsums[sum] = {
+         inputs={ds.inputs[1][i],{ds.inputs[2][1][i]}}, 
+         targets={ds.targets[1][i],{ds.targets[2][1][i]}},
+         idx = i
+      }
+   end
+   
+   local batchsize = 24
+   local epochsize = 1000
+
+   
+   local rowcounts = torch.Tensor(ds.inputs[1]:size(1)):zero()
+   local nsampled = 0
+   for k, inputs, targets in ds:sampleiter(batchsize, epochsize) do
+      for i=1,inputs[1]:size(1) do
+         local sum = inputs[1][i]:sum()
+         local row = rowsums[sum]
+         mytester:assert(row)
+         rowcounts[row.idx] = rowcounts[row.idx] + 1
+         
+         mytester:assertTensorEq(row.inputs[1], inputs[1][i], 0.000001)
+      end
+      nsampled = k
+   end
+   mytester:assert(nsampled == epochsize)
+   mytester:assert(rowcounts:min() > 0)
+   local std = rowcounts:std()
+   mytester:assert(std > 2.3 and std < 4)
 end
 
 function dltest.ImageClass()

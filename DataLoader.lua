@@ -74,6 +74,7 @@ end
 
 -- iterators : subiter, sampleiter
 
+-- subiter : for iterating over validation and test sets
 function DataLoader:subiter(batchsize, epochsize, ...)
    batchsize = batchsize or 32
    local dots = {...}
@@ -104,6 +105,37 @@ function DataLoader:subiter(batchsize, epochsize, ...)
       if self._start >= size then
          self._start = 1
       end
+      
+      self:collectgarbage()
+      
+      return nsampled, unpack(batch)
+   end
+end
+
+-- sampleiter : for iterating over training sets
+function DataLoader:sampleiter(batchsize, epochsize, ...)
+   batchsize = batchsize or 32
+   local dots = {...}
+   local size = self:size()
+   epochsize = epochsize or self:size()
+   local nsampled = 0
+   
+   local inputs, targets
+   
+   -- build iterator
+   return function()
+      if nsampled >= epochsize then
+         return
+      end
+      
+      local bs = math.min(nsampled+batchsize, epochsize) - nsampled
+      
+      -- inputs and targets
+      local batch = {self:sample(bs, inputs, targets, unpack(dots))}
+      -- allows reuse of inputs and targets buffers for next iteration
+      inputs, targets = batch[1], batch[2]
+      
+      nsampled = nsampled + bs
       
       self:collectgarbage()
       
