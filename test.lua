@@ -175,7 +175,6 @@ function dltest.TensorLoader()
    
    local batchsize = 24
    local epochsize = 1000
-
    
    local rowcounts = torch.Tensor(ds.inputs[1]:size(1)):zero()
    local nsampled = 0
@@ -187,6 +186,9 @@ function dltest.TensorLoader()
          rowcounts[row.idx] = rowcounts[row.idx] + 1
          
          mytester:assertTensorEq(row.inputs[1], inputs[1][i], 0.000001)
+         mytester:assertTensorEq(row.inputs[2][1], inputs[2][1][i], 0.000001)
+         mytester:assert(math.abs(row.targets[1] - targets[1][i]) < 0.000001)
+         mytester:assertTensorEq(row.targets[2][1], targets[2][1][i], 0.000001)
       end
       nsampled = k
    end
@@ -381,6 +383,39 @@ function dltest.AsyncIterator()
       nsampled = k
    end
    mytester:assert(nsampled == epochsize)
+   mytester:assert(ds2.querymode == 'subiter')
+   
+   -- test sampleiter 
+   
+   local rowsums = {}
+   for i=1,ds1.inputs:size(1) do
+      local sum = ds1.inputs[i]:sum()
+      assert(not rowsums[sum])
+      rowsums[sum] = {inputs=ds1.inputs[i], targets=ds1.targets[i], idx=i}
+   end
+   
+   local batchsize = 24
+   local epochsize = 1000
+   
+   local rowcounts = torch.Tensor(ds1.inputs:size(1)):zero()
+   local nsampled = 0
+   for k, inputs, targets in ds2:sampleiter(batchsize, epochsize) do
+      for i=1,inputs:size(1) do
+         local sum = inputs[i]:sum()
+         local row = rowsums[sum]
+         mytester:assert(row)
+         rowcounts[row.idx] = rowcounts[row.idx] + 1
+         
+         mytester:assertTensorEq(row.inputs, inputs[i], 0.000001)
+         mytester:assertTensorEq(row.targets, targets[i], 0.000001)
+      end
+      nsampled = k
+   end
+   mytester:assert(nsampled == epochsize)
+   mytester:assert(rowcounts:min() > 0)
+   local std = rowcounts:std()
+   mytester:assert(std > 2.3 and std < 4)
+   mytester:assert(ds2.querymode == 'sampleiter')
 end
 
 function dl.test(tests)

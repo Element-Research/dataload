@@ -123,7 +123,7 @@ function AsyncIterator:asyncGet()
    return self.recvqueue:get()
 end
 
--- iterators : subpairs, samplepairs
+-- iterators : subiter, samplepairs
 
 -- subiter : for iterating over validation and test sets.
 -- Note batches are not necessarily returned in order (because asynchronous) 
@@ -133,7 +133,7 @@ function AsyncIterator:subiter(batchsize, epochsize, ...)
    
    -- empty the async queue
    self:synchronize()
-   self.querymode = 'subpairs'
+   self.querymode = 'subiter'
    
    local size = self:size()
    epochsize = epochsize or self:size()
@@ -148,7 +148,7 @@ function AsyncIterator:subiter(batchsize, epochsize, ...)
      
    -- build iterator
    local iterate = function()
-      assert(self.querymode == 'subpairs', "Can only support one iterator per synchronize()")
+      assert(self.querymode == 'subiter', "Can only support one iterator per synchronize()")
       
       if nget >= epochsize then
          return
@@ -170,6 +170,63 @@ function AsyncIterator:subiter(batchsize, epochsize, ...)
          if self._start >= size then
             self._start = 1
          end
+      end
+      
+      if not putOnly then
+         local batch = self:asyncGet()
+         -- we will resend these buffers to the workers next call
+         previnputs, prevtargets = batch[1], batch[2]
+         nget = nget + batch.size
+         self:collectgarbage()
+         return nget, unpack(batch)
+      end
+   end
+   
+   -- fill task queue with some batch requests
+   for tidx=1,self.nthread do
+      iterate()
+   end
+   putOnly = false
+   
+   return iterate
+end
+
+function AsyncIterator:sampleiter(batchsize, epochsize, ...)
+   batchsize = batchsize or 32
+   local dots = {...}
+   
+   -- empty the async queue
+   self:synchronize()
+   self.querymode = 'sampleiter'
+   
+   local size = self:size()
+   epochsize = epochsize or self:size()
+   local nput = 0
+   local nget = 0 -- nsampled
+   local stop
+   
+   local previnputs, prevtargets
+   
+   local putOnly = true
+     
+   -- build iterator
+   local iterate = function()
+      assert(self.querymode == 'sampleiter', "Can only support one iterator per synchronize()")
+      
+      if nget >= epochsize then
+         return
+      end
+      
+      
+      -- asynchronously send (put) a task to a worker to be retrieved (get)
+      -- by a later iteration
+      if nput < epochsize then
+         local bs = math.min(nput+batchsize, epochsize) - nput
+         
+         -- if possible, reuse buffers previnputs and prevtargets
+         self:asyncPut('sample', {bs, previnputs, prevtargets, unpack(dots)}, bs)
+         
+         nput = nput + bs
       end
       
       if not putOnly then
