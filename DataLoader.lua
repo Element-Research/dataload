@@ -72,9 +72,10 @@ function DataLoader:clone(...)
    return clone
 end
 
--- iterators : subpairs, samplepairs
+-- iterators : subiter, sampleiter
 
 function DataLoader:subiter(batchsize, epochsize, ...)
+   batchsize = batchsize or 32
    local dots = {...}
    local size = self:size()
    epochsize = epochsize or self:size()

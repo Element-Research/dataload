@@ -19,6 +19,7 @@ require 'dataload.utils'
 require 'dataload.DataLoader'
 require 'dataload.TensorLoader'
 require 'dataload.ImageClass'
+require 'dataload.AsyncIterator'
 require 'dataload.MNIST'
 require 'dataload.test'
 

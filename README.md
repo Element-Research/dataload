@@ -20,6 +20,6 @@ specific datasets using the above loaders :
 
 ## ImageClass
 
-## MultiThread
+## AsyncIterator
 
 ## loadMNIST

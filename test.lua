@@ -255,6 +255,37 @@ function dltest.ImageClass()
    mytester:assert(targets:view(5,10):float():std(2):sum() < 0.0000001)
 end
 
+function dltest.AsyncIterator()
+   if not pcall(function() require 'threads' end) then
+      return
+   end
+   local inputs, targets = torch.randn(100,3), torch.randn(100, 10)
+   local ds1 = dl.TensorLoader(inputs, targets)
+   local ds2 = dl.AsyncIterator(ds1,2)
+   mytester:assert(true)
+   
+   local bs = 10
+   local es = 100
+   
+   local batches = {}
+   for i, inputs, targets in ds1:subiter() do
+      assert(not batches[inputs:sum()])
+      batches[inputs:sum()] = {inputs=inputs:clone(), targets=targets:clone()}
+   end
+   
+   local n = 0
+   local bidx = 0
+   for i, inputs, targets in ds2:subiter() do
+      bidx = bidx + 1
+      n = n + inputs:size(1)
+      local batch2 = batches[inputs:sum()]
+      mytester:assert(batch2)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      batches[inputs:sum()] = nil
+   end
+   mytester:assert(bidx == 4)
+end
 
 function dl.test(tests)
    math.randomseed(os.time())
