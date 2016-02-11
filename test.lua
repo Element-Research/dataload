@@ -196,6 +196,23 @@ function dltest.TensorLoader()
    mytester:assert(rowcounts:min() > 0)
    local std = rowcounts:std()
    mytester:assert(std > 2.3 and std < 4)
+   
+   -- simple subiter test 
+   local dataloader = dl.TensorLoader(torch.range(1,5), torch.range(1,5))
+
+   local inputs_ = {}
+   table.insert(inputs_, dataloader.inputs:sub(1,2))
+   table.insert(inputs_, dataloader.inputs:sub(3,4))
+   table.insert(inputs_, dataloader.inputs:sub(5,5))
+   table.insert(inputs_, dataloader.inputs:sub(1,1))
+
+   local i = 0
+   
+   for k, inputs, targets in dataloader:subiter(2,6) do
+      i = i + 1
+      mytester:assertTensorEq(inputs_[i], inputs, 0.0000001)
+   end
+
 end
 
 function dltest.ImageClass()

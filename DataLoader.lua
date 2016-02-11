@@ -44,13 +44,13 @@ function DataLoader:tsize(excludedim)
    error"Not Implemented"
 end
 
--- called by MultiThread before serializing the DataLoader to threads
+-- called by AsyncIterator before serializing the DataLoader to threads
 function DataLoader:reset()
    self._indices = nil
    self._start = nil
 end
 
--- collect garbage every self.gccount times this method is called 
+-- collect garbage every self.gcdelay times this method is called 
 function DataLoader:collectgarbage()
    self.gcdelay = self.gcdelay or 200
    self.gccount = (self.gccount or 0) + 1
@@ -102,7 +102,7 @@ function DataLoader:subiter(batchsize, epochsize, ...)
       bs = stop - self._start + 1
       nsampled = nsampled + bs
       self._start = self._start + bs
-      if self._start >= size then
+      if self._start > size then
          self._start = 1
       end
       
