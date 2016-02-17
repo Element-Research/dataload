@@ -21,7 +21,7 @@ dataloader = dl.DataLoader()
 ``` 
 
 An abstract class inherited by all `DataLoader` instances. 
-A `dataloader` wraps a data set to provide methods for accessing
+It wraps a data set to provide methods for accessing
 `inputs` and `targets`. The data itself may be loaded from disk or memory.
 
 ### [n] size()
@@ -242,6 +242,10 @@ Returns a deep `copy` clone of `self`.
 
 <a name='dl.TensorLoader'></a>
 ## TensorLoader
+
+```lua
+dataloader = dl.TensorLoader() 
+``` 
 
 <a name='dl.ImageClass'></a>
 ## ImageClass
