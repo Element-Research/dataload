@@ -59,7 +59,7 @@ end
 -- If existfile is provided then 
 -- decompress only if that file doesn't exist.
 -- Supported extensions for srczip are : .zip, .tar, .tgz, .gz, .gzip
-function dl.decompressfile(dstdir, srczip, existfile, verbose)
+function dl.decompressfile(dstdir, srczip, existfile, verbose, dstfile)
    paths.mkdir(dstdir)
    
    if (not existfile) or (not paths.filep(existfile)) then
@@ -69,11 +69,11 @@ function dl.decompressfile(dstdir, srczip, existfile, verbose)
                print("decompressing file: ", srczip) 
             end
             if string.find(srczip, ".zip") then
-               dl.unzip(srczip)
+               dl.unzip(srczip, dstfile)
             elseif string.find(srczip, ".tar") or string.find(srczip, ".tgz") then
-               dl.untar(srczip)
+               dl.untar(srczip, dstfile)
             elseif string.find(srczip, ".gz") or string.find(srczip, ".gzip") then
-               dl.gunzip(srczip)
+               dl.gunzip(srczip, dstfile)
             else
                error("Don't know how to decompress file: ", srczip)
             end
