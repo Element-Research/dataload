@@ -312,5 +312,20 @@ Constructor arguments are as follows :
 <a name='dl.AsyncIterator'></a>
 ## AsyncIterator
 
+```lua
+dataloader = dl.AsyncIterator(dataloader, [nthread, verbose])
+``` 
+
+This `DataLoader` subclass overwrites the [`subiter`](#dl.DataLoad.subiter) and [`sampleiter`](#dl.DataLoad.subiter)
+iterator methods. The implementation uses the [threads](https://github.com/torch/threads) package to 
+build a pool of `nthread` worker threads. The main thread delegates the tasks of building `inputs` and `targets` tensors 
+to the workers. The workers each have a deep copy of the decorated `dataloader`.
+When a task is received from the main thread through the Queue, they call [`sample`](#dl.DataLoad.sample)
+or [`sub`](#dl.DataLoad.sub) to build the batch and return the `inputs` and `targets` to the 
+main thread. The iteration is asynchronous as the first iteration will fill the Queue with `nthread` tasks.
+Note that when `nthread > 1` the order of tensors is not deterministic. 
+This loader is well suited for decorating a `dl.ImageClass` instance and other 
+such I/O and CPU bound loaders.
+
 <a name='dl.loadMNIST'></a>
 ## loadMNIST
