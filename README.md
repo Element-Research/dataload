@@ -44,6 +44,7 @@ When `targets` is a tensor, the returned `size` is
 a table of numbers. When it is a table of tensors, the returned `size` 
 is a table of table of numbers. 
 
+<a name='dl.DataLoad.index'></a>
 ### [inputs, targets] index(indices, [inputs, targets])
 
 Returns `inputs` and `targets` containing samples indexed by `indices`.
@@ -60,6 +61,7 @@ When `inputs` and `targets` are provided as arguments, they are used as
 memory buffers for the returned `inputs` and `targets`, 
 i.e. their allocated memory is reused.
 
+<a name='dl.DataLoad.sample'></a>
 ### [inputs, targets] sample(batchsize, [inputs, targets])
 
 Returns `inputs` and `targets` containing `batchsize` random samples.
@@ -70,6 +72,7 @@ indices = torch.LongTensor(batchsize):random(1,dataloader:size())
 inputs, targets = dataloader:index(indices)
 ``` 
 
+<a name='dl.DataLoad.sub'></a>
 ### [inputs, targets] sub(start, stop, [inputs, targets])
 
 Returns `inputs` and `targets` containing `stop-start+1` samples between `start` and `stop`.
@@ -92,6 +95,7 @@ where `ds1` contains the first `math.floor(ratio x dataloader:size())` samples,
 and `ds2` contains the remainder. 
 Useful for splitting a training set into a new training set and validation set.
 
+<a name='dl.DataLoad.subiter'></a>
 ### [iterator] subiter([batchsize, epochsize, ...])
 
 Returns an iterator over a validation and test sets.
@@ -103,6 +107,9 @@ Each iteration returns 3 values :
  
 The iterator will return batches of `inputs` and `targets` of size at most `batchsize` until 
 `epochsize` samples have been returned.
+
+Note that the default implementation of this iterator is to call [sub](#dl.DataLoad.sub) for each batch.
+Sub-classes may over-write this behavior.
 
 Example :
 
@@ -164,6 +171,7 @@ Note how the last two batches are of size 1 while those before are of size `batc
 The reason for this is that the `dataloader` only has 5 samples.  
 So the last batch is split between the last sample and the first.
 
+<a name='dl.DataLoad.sampleiter'></a>
 ### [iterator] sampleiter([batchsize, epochsize, ...])
 
 Returns an iterator over a training set. 
@@ -175,6 +183,9 @@ Each iteration returns 3 values :
  
 The iterator will return batches of `inputs` and `targets` of size at most `batchsize` until 
 `epochsize` samples have been returned.
+
+Note that the default implementation of this iterator is to call [sample](#dl.DataLoad.sample) for each batch.
+Sub-classes may over-write this behavior.
 
 Example :
 
@@ -269,6 +280,34 @@ dataloader = dl.TensorLoader(inputs, targets)
 
 <a name='dl.ImageClass'></a>
 ## ImageClass
+
+```lua
+dataloader = dl.ImageClass(datapath, loadsize, [samplesize, samplefunc, sortfunc, verbose])
+``` 
+
+For loading an image classification data set stored in a flat folder structure :
+
+```
+(datapath)/(classdir)/(imagefile).(jpg|png|etc)
+``` 
+
+So directory `classdir` is expected to contain the all images belonging to that class.
+All image files are indexed into an efficient `CharTensor` during initialization.
+Images are only loaded into `inputs` and `targets` tensors upon calling 
+batch sampling methods like [index](#dl.DataLoad.index), [sample](#dl.DataLoad.index) and [sub](#dl.DataLoad.index).
+
+Note that for asynchronous loading of images (i.e. loading batches of images in different threads), 
+the `ImageClass` loader can be decorated with an [AsyncIterator](#dl.AsyncIterator). 
+Images on disk can have different height, width and number of channels. 
+
+Constructor arguments are as follows :
+ 
+ * `datapath` : one or many paths to directories of images;
+ * `loadsize` : initialize size to load the images to. Example : `{3, 256, 256}`;
+ * `samplesize` : consistent sample size to resize the images to. Defaults to `loadsize`;
+ * `samplefunc` : `function f(self, dst, path)` used to create a sample(s) from an image path. Stores them in `CharTensor` `dst`. Strings `"sampleDefault"` (the default), `"sampleTrain"` or `"sampleTest"` can also be provided as they refer to existing functions
+ * `verbose` : display verbose message (default is `true`);
+ * `sortfunc` : comparison operator used for sorting `classdir` to get class indices. Defaults to the `<` operator.
 
 <a name='dl.AsyncIterator'></a>
 ## AsyncIterator
