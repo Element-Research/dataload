@@ -244,7 +244,27 @@ Returns a deep `copy` clone of `self`.
 ## TensorLoader
 
 ```lua
-dataloader = dl.TensorLoader() 
+dataloader = dl.TensorLoader(inputs, targets) 
+``` 
+
+The `TensorLoader` can be used to encapsulate tensors of `inputs` and `targets`.
+As an example, consider a dummy `3 x 8 x 8` image classification dataset consisting of 1000 samples and 10 classes: 
+
+```lua
+inputs = torch.randn(1000, 3, 8, 8)
+targets = torch.LongTensor(1000):random(1,10)
+dataloader = dl.TensorLoader(inputs, targets)
+``` 
+
+The `TensorLoader` can also be used to encapsulate nested tensors of `inputs` and `targets`.
+It uses recursive functions to handle nestings of arbitrary depth. As an example, let us 
+modify the above example to include `x,y` GPS coordinates in the `inputs` and 
+a parallel set of classification `targets` (7 classes): 
+
+```lua
+inputs = {torch.randn(1000, 3, 8, 8), torch.randn(1000, 2)}
+targets = {torch.LongTensor(1000):random(1,10), torch.LongTensor(1000):random(1,7)}
+dataloader = dl.TensorLoader(inputs, targets)
 ``` 
 
 <a name='dl.ImageClass'></a>
