@@ -12,6 +12,8 @@ require 'lfs'
 require 'moses'
 require 'ffi'
 
+unpack = unpack or table.unpack
+
 local dl = require 'dataload._env'
 
 require 'dataload.config'
