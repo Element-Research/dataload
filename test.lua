@@ -435,6 +435,18 @@ function dltest.AsyncIterator()
    mytester:assert(ds2.querymode == 'sampleiter')
 end
 
+function dltest.SequenceLoader()
+   local data = torch.LongTensor(1003)
+   local batchsize = 50
+   local ds = dl.SequenceLoader(data, batchsize)
+   local data2 = data:sub(1,1000):view(1000/50,50)
+   mytester:assertTensorEq(ds.data, data2, 0.000001)
+   
+   local inputs, targets = ds:sub(1, 5)
+   mytester:assertTensorEq(ds.data:sub(1,5), inputs, 0.0000001)
+   mytester:assertTensorEq(ds.data:sub(2,6), targets, 0.0000001)
+end   
+
 function dl.test(tests)
    math.randomseed(os.time())
    mytester = torch.Tester()
