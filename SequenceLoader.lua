@@ -1,5 +1,5 @@
 local dl = require 'dataload._env'
-local SequenceLoader = torch.class('dl.SequenceLoader', 'dl.DataLoader', dl)
+local SequenceLoader, parent = torch.class('dl.SequenceLoader', 'dl.DataLoader', dl)
 
 function SequenceLoader:__init(data, batchsize, bidirectional)
    assert(torch.isTensor(data))
@@ -66,5 +66,13 @@ end
 
 function SequenceLoader:tsize(excludedim)
    return self:isize(excludedim)
+end
+
+function SequenceLoader:subiter(seqlen, epochsize, ...)
+   return parent.subiter(self, seqlen, epochsize, ...)
+end
+
+function SequenceLoader:sampleiter(seqlen, epochsize, ...)
+   error"Not Implemented. Use subiter instead."
 end
 

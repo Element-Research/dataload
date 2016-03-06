@@ -438,6 +438,7 @@ end
 function dltest.SequenceLoader()
    local data = torch.LongTensor(1003)
    local batchsize = 50
+   local seqlen = 5
    local ds = dl.SequenceLoader(data, batchsize)
    local data2 = data:sub(1,1000):view(1000/50,50)
    mytester:assertTensorEq(ds.data, data2, 0.000001)
@@ -445,6 +446,19 @@ function dltest.SequenceLoader()
    local inputs, targets = ds:sub(1, 5)
    mytester:assertTensorEq(ds.data:sub(1,5), inputs, 0.0000001)
    mytester:assertTensorEq(ds.data:sub(2,6), targets, 0.0000001)
+   
+   local start2 = 1
+   for start, inputs, targets in ds:subiter(seqlen) do
+      local stop2 = math.min(start2+seqlen-1, data2:size(1)-1)
+      local inputs2 = data2:sub(start2,stop2)
+      local targets2 = data2:sub(start2+1,stop2+1)
+      
+      mytester:assertTensorEq(inputs, inputs2, 0.000001)
+      mytester:assertTensorEq(targets, targets2, 0.000001)
+      start2 = start2 + seqlen
+   end
+   
+   mytester:assert(start2 == 1000/50 + 1)
 end   
 
 function dl.test(tests)
