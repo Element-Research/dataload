@@ -1,23 +1,23 @@
 local dl = require 'dataload._env'
 local SequenceLoader, parent = torch.class('dl.SequenceLoader', 'dl.DataLoader', dl)
 
-function SequenceLoader:__init(data, batchsize, bidirectional)
-   assert(torch.isTensor(data))
+function SequenceLoader:__init(sequence, batchsize, bidirectional)
+   assert(torch.isTensor(sequence))
    assert(torch.type(batchsize) == 'number')
-   -- data is a tensor where the first dimension indexes the sequence
+   -- sequence is a tensor where the first dimension indexes time
    
    self.batchsize = batchsize
    self.bidirectional = bidirectional 
    
-   local seqlen = data:size(1)
-   local size = data:size():totable()
+   local seqlen = sequence:size(1)
+   local size = sequence:size():totable()
    table.remove(size, 1)
-   assert(#size == data:dim() - 1)
+   assert(#size == sequence:dim() - 1)
    
-   self.data = data.new()
+   self.data = sequence.new()
    -- note that some data will be lost
    local seqlen2 = torch.floor(seqlen / batchsize)
-   self.data = data:sub(1,seqlen2*batchsize):view(seqlen2, batchsize):contiguous()
+   self.data = sequence:sub(1,seqlen2*batchsize):view(seqlen2, batchsize):contiguous()
 end
 
 -- inputs : seqlen x batchsize [x inputsize]

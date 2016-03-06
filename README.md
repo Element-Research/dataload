@@ -6,12 +6,14 @@ The library provides the following generic data loader classes :
  * [DataLoader](#dl.DataLoader) : an abstract class inherited by the following classes;
  * [TensorLoader](#dl.TensorLoader) : for tensor or nested (i.e. tables of) tensor datasets;
  * [ImageClass](#dl.ImageClass) : for image classification datasets stored in a flat folder structure;
+ * [SequenceLoader](#dl.SequenceLoader) : for sequence datasets like language or time-series;
  * [AsyncIterator](#dl.AsyncIterator) : decorates a `DataLoader` for asynchronou multi-threaded iteration.
 
 The library also provides functions for downloading and wrapping 
 specific datasets using the above loaders :
 
- * loadMNIST
+ * [MNIST](#dl.loadMNIST)
+ * [Penn Tree Bank](#dl.loadPTB)
 
 <a name='dl.DataLoader'></a>
 ## DataLoader
@@ -327,5 +329,59 @@ Note that when `nthread > 1` the order of tensors is not deterministic.
 This loader is well suited for decorating a `dl.ImageClass` instance and other 
 such I/O and CPU bound loaders.
 
+<a name='dl.SequenceLoader'></a>
+## SequenceLoader
+
+```lua
+dataloader = dl.SequenceLoader(sequence, batchsize, [bidirectional])
+``` 
+
+This `DataLoader` subclass can be used to encapsulate a `sequence`
+for training time-series or language models. 
+The `sequence` is a tensor where the first dimension indexes time.
+Internally, the loader will split the `sequence` into `batchsize` subsequences.
+Calling the `sub(start, stop, inputs, targets)` method will return 
+`inputs` and `targets` of size `seqlen x batchsize [x inputsize]`
+where `stop - start + 1 <= seqlen`.
+The `bidirectional` argument should be set 
+to `true` for bidirectional models like BRNN/BLSTMs. In which case,
+the returned `inputs` and `targets` will be aligned. 
+For example, using `batchsize = 3` and `seqlen = 5` :
+
+```lua
+print(inputs:t(), targets:t())
+   36  1516   853    94  1376
+ 3193   433   553   805   521
+  512   434    57  1029  1962
+[torch.IntTensor of size 3x5]
+
+   36  1516   853    94  1376
+ 3193   433   553   805   521
+  512   434    57  1029  1962
+[torch.IntTensor of size 3x5]
+``` 
+
+When `bidirectional` is `false` (the default), the `targets` will 
+be one step in the future with respect to the inputs :
+For example, using `batchsize = 3` and `seqlen = 5` :
+
+
+```lua
+print(inputs:t(), targets:t())
+   36  1516   853    94  1376
+ 3193   433   553   805   521
+  512   434    57  1029  1962
+[torch.IntTensor of size 3x5]
+
+ 1516   853    94  1376   719
+  433   553   805   521    27
+  434    57  1029  1962    49
+[torch.IntTensor of size 3x5]
+``` 
+
 <a name='dl.loadMNIST'></a>
 ## loadMNIST
+
+<a name='dl.loadPTB'></a>
+## loadPTB
+
