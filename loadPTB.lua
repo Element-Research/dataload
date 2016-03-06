@@ -20,20 +20,24 @@ function dl.loadPTB(batchsize, datapath, srcurl)
    local vocab, ivocab, wordfreq
    for i,whichset in ipairs{'train', 'valid', 'test'} do
       -- download the file if necessary
-      dl.downloadfile(datapath, srcurl, 'ptb.'..whichset..'.txt')
-      local text = file.read(path)
+      local filename = 'ptb.'..whichset..'.txt'
+      local filepath = paths.concat(datapath, filename)
+      dl.downloadfile(datapath, srcurl..filename, filepath)
+      local text = file.read(filepath)
       text = stringx.replace(text, '\n', '<eos>')
       local tokens = stringx.split(text)
       if whichset == 'train' then
-         vocab, ivocab, wordfreq = dl.buildVocab(data)
+         vocab, ivocab, wordfreq = dl.buildVocab(tokens)
       end
       local tensor = dl.text2tensor(tokens, vocab)
       
       -- 3. encapsulate into SequenceLoader
-      
       local loader = dl.SequenceLoader(tensor, batchsize)
+      loader.vocab = vocab
+      loader.ivocab = ivocab
+      loader.wordfreq = wordfreq
       table.insert(loaders, loader)
    end
    
-   return unpack(loader)
+   return unpack(loaders)
 end

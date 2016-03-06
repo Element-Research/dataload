@@ -114,12 +114,15 @@ end
 
 -- text utility functions
 
-function dl.buildVocab(textstring, minfreq)
+function dl.buildVocab(tokens, minfreq)
+   assert(torch.type(tokens) == 'table', 'Expecting table')
+   assert(torch.type(tokens[1]) == 'string', 'Expecting table of strings')
    minfreq = minfreq or -1
+   assert(torch.type(minfreq) == 'number')
    local wordfreq = {}
    
-   for i=1,#textstring do
-      local word = textstring[i]
+   for i=1,#tokens do
+      local word = tokens[i]
       wordfreq[word] = (wordfreq[word] or 0) + 1
    end
    

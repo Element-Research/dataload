@@ -461,6 +461,24 @@ function dltest.SequenceLoader()
    mytester:assert(start2 == 1000/50 + 1)
 end   
 
+function dltest.loadPTB()
+   local batchsize = 20
+   local seqlen = 5
+   local train, valid, test = dl.loadPTB(20)
+   
+   mytester:assert(#train.ivocab == 10000)
+   local textsize, vocabsize = 0, 0
+   for word, wordid in pairs(train.vocab) do
+      textsize = textsize + train.wordfreq[word]
+      vocabsize = vocabsize + 1
+   end
+   mytester:assert(vocabsize == 10000)
+   mytester:assert(train:size() == math.floor(textsize/batchsize)-1)
+   mytester:assert(not train.vocab['<OOV>'])
+   mytester:assert(valid)
+   mytester:assert(test)
+end
+
 function dl.test(tests)
    math.randomseed(os.time())
    mytester = torch.Tester()
