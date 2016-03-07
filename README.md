@@ -382,6 +382,31 @@ print(inputs:t(), targets:t())
 <a name='dl.loadMNIST'></a>
 ## loadMNIST
 
+```lua
+train, valid, test = dl.loadMNIST([datapath, validratio, scale, srcurl])
+``` 
+
+Returns the training, validation and testing sets as 3 `TensorLoader` instances.
+Each such loader encapsulates a part of the MNIST dataset which is 
+located in `datapath` (defaults to `dl.DATA_PATH/mnist`).
+The `validratio` argument, a number between 0 and 1, 
+specifies the ratio of the 60000 training samples
+that will be allocated to the validation set. 
+The `scale` argument specifies range within which pixel values will be scaled (defaults to `{0,1}`).
+The `srcurl` specifies the URL from where the raw data can be downloaded from 
+if not located on disk.
+
 <a name='dl.loadPTB'></a>
 ## loadPTB
 
+```lua
+train, valid, test = dl.loadPTB(batchsize, [datapath, srcurl])
+``` 
+
+Returns the training, validation and testing sets as 3 `SequenceLoader` instance
+Each such loader encapsulates a part of the Penn Tree Bank dataset which is 
+located in `datapath` (defaults to `dl.DATA_PATH/PennTreeBank`).
+If the files aren't found in the `datapath`, they will be automatically downloaded
+from the `srcurl` URL.
+The `batchsize` specifies the number of samples that will be returned when 
+iterating through the dataset. 
