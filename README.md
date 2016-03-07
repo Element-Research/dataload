@@ -409,4 +409,6 @@ located in `datapath` (defaults to `dl.DATA_PATH/PennTreeBank`).
 If the files aren't found in the `datapath`, they will be automatically downloaded
 from the `srcurl` URL.
 The `batchsize` specifies the number of samples that will be returned when 
-iterating through the dataset. 
+iterating through the dataset. If specified as a table, its elements 
+specify the `batchsize` of commensurate `train`, `valid` and `test` tables. 
+We recommend a `batchsize` of 1 for evaluation sets (e.g. `{50,1,1}`).

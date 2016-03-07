@@ -5,12 +5,13 @@ function dl.loadPTB(batchsize, datapath, srcurl)
    -- 1. arguments and defaults
    
    -- the size of the batch is fixed for SequenceLoaders
-   assert(torch.type(batchsize) == 'number')
+   batchsize = torch.type(batchsize) == 'table' and batchsize or {batchsize, batchsize, batchsize}
+   assert(torch.type(batchsize[1]) == 'number')
    -- path to directory containing Penn Tree Bank dataset on disk
    datapath = datapath or paths.concat(dl.DATA_PATH, 'PennTreeBank')
    -- URL from which to download dataset if not found on disk.
    srcurl = srcurl or 'https://raw.githubusercontent.com/wojzaremba/lstm/master/data/'
-   
+
    -- 2. load raw data, convert to tensor
    
    local file = require('pl.file')
@@ -32,7 +33,7 @@ function dl.loadPTB(batchsize, datapath, srcurl)
       local tensor = dl.text2tensor(tokens, vocab)
       
       -- 3. encapsulate into SequenceLoader
-      local loader = dl.SequenceLoader(tensor, batchsize)
+      local loader = dl.SequenceLoader(tensor, batchsize[i])
       loader.vocab = vocab
       loader.ivocab = ivocab
       loader.wordfreq = wordfreq
