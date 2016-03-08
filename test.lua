@@ -440,7 +440,8 @@ function dltest.SequenceLoader()
    local batchsize = 50
    local seqlen = 5
    local ds = dl.SequenceLoader(data, batchsize)
-   local data2 = data:sub(1,1000):view(1000/50,50)
+   local data2 = data:sub(1,1000):view(50, 1000/50):t()
+   mytester:assertTensorEq(data:narrow(1,1,1000/50), data2:select(2,1), 0.0000001)
    mytester:assertTensorEq(ds.data, data2, 0.000001)
    
    local inputs, targets = ds:sub(1, 5)
@@ -477,6 +478,16 @@ function dltest.loadPTB()
    mytester:assert(not train.vocab['<OOV>'])
    mytester:assert(valid)
    mytester:assert(test)
+   
+   if false then
+      local sequence = {}
+      for i,inputs,targets in train:subiter(seqlen) do
+         for k=1,inputs:size(1) do
+            table.insert(sequence, train.ivocab[inputs[{k,1}]] or 'WTF?')
+         end
+      end
+      print(table.concat(sequence, ' '))
+   end
 end
 
 function dl.test(tests)
