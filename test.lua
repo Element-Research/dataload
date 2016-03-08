@@ -435,6 +435,61 @@ function dltest.AsyncIterator()
    mytester:assert(ds2.querymode == 'sampleiter')
 end
 
+function dltest.SequenceLoader()
+   local data = torch.LongTensor(1003)
+   local batchsize = 50
+   local seqlen = 5
+   local ds = dl.SequenceLoader(data, batchsize)
+   local data2 = data:sub(1,1000):view(50, 1000/50):t()
+   mytester:assertTensorEq(data:narrow(1,1,1000/50), data2:select(2,1), 0.0000001)
+   mytester:assertTensorEq(ds.data, data2, 0.000001)
+   
+   local inputs, targets = ds:sub(1, 5)
+   mytester:assertTensorEq(ds.data:sub(1,5), inputs, 0.0000001)
+   mytester:assertTensorEq(ds.data:sub(2,6), targets, 0.0000001)
+   
+   local start2 = 1
+   for start, inputs, targets in ds:subiter(seqlen) do
+      local stop2 = math.min(start2+seqlen-1, data2:size(1)-1)
+      local inputs2 = data2:sub(start2,stop2)
+      local targets2 = data2:sub(start2+1,stop2+1)
+      
+      mytester:assertTensorEq(inputs, inputs2, 0.000001)
+      mytester:assertTensorEq(targets, targets2, 0.000001)
+      start2 = start2 + seqlen
+   end
+   
+   mytester:assert(start2 == 1000/50 + 1)
+end   
+
+function dltest.loadPTB()
+   local batchsize = 20
+   local seqlen = 5
+   local train, valid, test = dl.loadPTB(20)
+   
+   mytester:assert(#train.ivocab == 10000)
+   local textsize, vocabsize = 0, 0
+   for word, wordid in pairs(train.vocab) do
+      textsize = textsize + train.wordfreq[word]
+      vocabsize = vocabsize + 1
+   end
+   mytester:assert(vocabsize == 10000)
+   mytester:assert(train:size() == math.floor(textsize/batchsize)-1)
+   mytester:assert(not train.vocab['<OOV>'])
+   mytester:assert(valid)
+   mytester:assert(test)
+   
+   if false then
+      local sequence = {}
+      for i,inputs,targets in train:subiter(seqlen) do
+         for k=1,inputs:size(1) do
+            table.insert(sequence, train.ivocab[inputs[{k,1}]] or 'WTF?')
+         end
+      end
+      print(table.concat(sequence, ' '))
+   end
+end
+
 function dl.test(tests)
    math.randomseed(os.time())
    mytester = torch.Tester()

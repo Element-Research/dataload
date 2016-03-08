@@ -111,3 +111,143 @@ function dl.binarize(x, threshold)
    x[x:ge(threshold)] = 1
    return x
 end
+
+-- text utility functions
+
+function dl.buildVocab(tokens, minfreq)
+   assert(torch.type(tokens) == 'table', 'Expecting table')
+   assert(torch.type(tokens[1]) == 'string', 'Expecting table of strings')
+   minfreq = minfreq or -1
+   assert(torch.type(minfreq) == 'number')
+   local wordfreq = {}
+   
+   for i=1,#tokens do
+      local word = tokens[i]
+      wordfreq[word] = (wordfreq[word] or 0) + 1
+   end
+   
+   local vocab, ivocab = {}, {}
+   local wordseq = 0
+   
+   local oov = 0
+   for word, freq in pairs(wordfreq) do
+      if freq >= minfreq then
+         wordseq = wordseq + 1
+         vocab[word] = wordseq
+         ivocab[wordseq] = word
+      else
+         oov = oov + freq
+      end
+   end
+   
+   if oov > 0 then
+      wordseq = wordfreq + 1
+      wordfreq['<OOV>'] = oov
+      vocab['<OOV>'] = wordseq
+      ivocab[wordseq] = '<OOV>'
+   end
+   
+   return vocab, ivocab, wordfreq
+end
+
+function dl.text2tensor(tokens, vocab)
+   local oov = vocab['<OOV>']
+   
+   local tensor = torch.IntTensor(#tokens):fill(0)
+   
+   for i, word in ipairs(tokens) do
+      local wordid = vocab[word] 
+      
+      if not wordid then
+         assert(oov)
+         wordid = oov
+      end
+      
+      tensor[i] = wordid
+   end
+   
+   return tensor
+end
+
+-- misc.
+
+function dl.hostname()
+   local f = io.popen ("/bin/hostname")
+   if not f then 
+      return 'localhost'
+   end
+   local hostname = f:read("*a") or ""
+   f:close()
+   hostname =string.gsub(hostname, "\n$", "")
+   return hostname
+end
+
+-- Generates a globally unique identifier.
+-- If a namespace is provided it is concatenated with 
+-- the time of the call, and the next value from a sequence
+-- to get a pseudo-globally-unique name.
+-- Otherwise, we concatenate the linux hostname
+local counter = 1
+function dl.uniqueid(namespace, separator)
+   local separator = separator or ':'
+   local namespace = namespace or dl.hostname()
+   local uid = namespace..separator..os.time()..separator..counter
+   counter = counter + 1
+   return uid
+end
+
+-- table
+
+--http://lua-users.org/wiki/TableUtils
+function table.val_to_str ( v )
+   if "string" == type( v ) then
+      v = string.gsub( v, "\n", "\\n" )
+      if string.match( string.gsub(v,"[^'\"]",""), '^"+$' ) then
+         return "'" .. v .. "'"
+      end
+      return '"' .. string.gsub(v,'"', '\\"' ) .. '"'
+   else
+      return "table" == type( v ) and table.tostring( v ) or tostring( v )
+   end
+end
+
+function table.key_to_str ( k )
+   if "string" == type( k ) and string.match( k, "^[_%a][_%a%d]*$" ) then
+      return k
+   else
+      return "[" .. table.val_to_str( k ) .. "]"
+   end
+end
+
+function table.tostring(tbl, newline, sort)
+   local result, done = {}, {}
+   for k, v in ipairs( tbl ) do
+      table.insert( result, table.val_to_str( v ) )
+      done[ k ] = true
+   end
+   local s = "="
+   if newline then
+      s = " : "
+   end
+   for k, v in pairs( tbl ) do
+      if not done[ k ] then
+         local line = table.key_to_str( k ) .. s .. table.val_to_str( v )
+         table.insert(result, line)
+      end
+   end
+   if sort then
+      _.sort(result)
+   end
+   local res
+   if newline then
+      res = "{\n   " .. table.concat( result, "\n   " ) .. "\n}"
+   else
+      res = "{" .. table.concat( result, "," ) .. "}"
+   end
+   return res
+end
+
+function table.print(tbl)
+   assert(torch.type(tbl) == 'table', "expecting table")
+   print(table.tostring(tbl, true, true))
+end

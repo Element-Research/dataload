@@ -79,7 +79,8 @@ function DataLoader:subiter(batchsize, epochsize, ...)
    batchsize = batchsize or 32
    local dots = {...}
    local size = self:size()
-   epochsize = epochsize or self:size()
+   epochsize = epochsize or -1 
+   epochsize = epochsize > 0 and epochsize or self:size()
    self._start = self._start or 1
    local nsampled = 0
    local stop
@@ -117,7 +118,8 @@ function DataLoader:sampleiter(batchsize, epochsize, ...)
    batchsize = batchsize or 32
    local dots = {...}
    local size = self:size()
-   epochsize = epochsize or self:size()
+   epochsize = epochsize or -1 
+   epochsize = epochsize > 0 and epochsize or self:size()
    local nsampled = 0
    
    local inputs, targets
