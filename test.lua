@@ -559,6 +559,16 @@ function dltest.loadImageNet()
    end
 end
 
+function dltest.fitImageNormalize()
+   local trainset, validset, testset = dl.loadMNIST()
+   local ppf = dl.fitImageNormalize(trainset, 5000)
+   
+   local inputs = validset:sample(100)
+   ppf(inputs)
+   mytester:assert(math.abs(inputs:mean()) < 0.05)
+   mytester:assert(math.abs(inputs:std() - 1) < 0.05) 
+end
+
 function dl.test(tests)
    math.randomseed(os.time())
    mytester = torch.Tester()

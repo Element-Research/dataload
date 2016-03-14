@@ -9,12 +9,16 @@ The library provides the following generic data loader classes :
  * [SequenceLoader](#dl.SequenceLoader) : for sequence datasets like language or time-series;
  * [AsyncIterator](#dl.AsyncIterator) : decorates a `DataLoader` for asynchronou multi-threaded iteration.
 
-The library also provides functions for downloading and wrapping 
-specific datasets using the above loaders :
+The library also provides functions for downloading specific datasets 
+and preparing them using the above loaders :
 
  * [MNIST](#dl.loadMNIST)
  * [Penn Tree Bank](#dl.loadPTB)
  * [Image Net](#dl.loadImageNet)
+ 
+Also, we try to provide some useful preprocessing functions :
+
+ * [fitImageNormalize](#dl.fitImageNormalize)
 
 <a name='dl.DataLoader'></a>
 ## DataLoader
@@ -473,3 +477,23 @@ paper, the ImageNet training dataset samples images cropped from random
 224x224 patches from the images resizes so that the smallest dimension has 
 size 256. As for the validation set, ten 224x224 patches are cropped per image,
 i.e. center, four corners and their horizontal flips, and their predictions are averaged. 
+
+
+<a name='dl.fitImageNormalize'></a>
+## fitImageNormalize
+
+```lua
+ppf = dl.fitImageNormalize(trainset, [nsample, cachepath, verbose])
+``` 
+
+Returns a `ppf` preprocessing function that can be used to in-place normalize a batch of images (`inputs`) 
+channel-wise : 
+
+```lua
+ppf(inputs)
+``` 
+
+The `trainset` argument is a [DataLoader](#dl.DataLoader) instance
+containing image `inputs`. The mean and standard deviation will be measured 
+on `nsample` images (default 10000). When `cachepath` is provided, the 
+mean and standard deviation are saved for the next function call.
