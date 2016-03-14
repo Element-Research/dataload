@@ -22,7 +22,7 @@ function ImageClass:__init(datapath, loadsize, samplesize, samplefunc, sortfunc,
    assert(torch.type(self.loadsize) == 'table')
    
    -- consistent sample size to resize the images. 
-   self.samplesize = self.samplesize or self.loadsize
+   self.samplesize = samplesize or self.loadsize
    assert(torch.type(self.samplesize) == 'table')
    
    -- function f(self, dst, path) used to create a sample(s) from 
@@ -32,7 +32,7 @@ function ImageClass:__init(datapath, loadsize, samplesize, samplefunc, sortfunc,
    self.samplefunc = samplefunc or 'sampleDefault'
 
    -- display verbose messages
-   self.verbose = verbose == nil and true or false
+   self.verbose = verbose == nil and true or verbose
    
    -- comparison operator used for sorting class dir to get idx.
    self.sortfunc = sortfunc -- Defaults to < operator
@@ -231,7 +231,8 @@ function ImageClass:size(class, list)
 end
 
 function ImageClass:index(indices, inputs, targets, samplefunc)
-
+   local imagepaths = {}
+   
    samplefunc = samplefunc or self.samplefunc
    if torch.type(samplefunc) == 'string' then
       samplefunc = self[samplefunc]
@@ -243,6 +244,7 @@ function ImageClass:index(indices, inputs, targets, samplefunc)
       local idx = indices[i]
       -- load the sample
       local imgpath = ffi.string(torch.data(self.imagePath[idx]))
+      imagepaths[i] = imgpath
       local dst = self:getImageBuffer(i)
       -- note that dst may have different sizes at this point
       dst = samplefunc(self, dst, imgpath)
@@ -255,7 +257,7 @@ function ImageClass:index(indices, inputs, targets, samplefunc)
    self:tableToTensor(inputTable, targetTable, inputs, targets)
 
    self:collectgarbage()
-   return inputs, targets
+   return inputs, targets, imagepaths
 end
 
 -- Sample a class uniformly, and then uniformly samples example from class.
@@ -263,6 +265,7 @@ end
 -- samplefunc is a function that generates one or many samples
 -- from one image. e.g. sampleDefault, sampleTrain, sampleTest.
 function ImageClass:sample(batchsize, inputs, targets, samplefunc)
+   local imagepaths = {}
    
    samplefunc = samplefunc or self.samplefunc
    if torch.type(samplefunc) == 'string' then
@@ -276,9 +279,10 @@ function ImageClass:sample(batchsize, inputs, targets, samplefunc)
       local class = torch.random(1, #self.classes)
       -- sample image from class
       local index = torch.random(1, self.classListSample[class]:nElement())
-      local imgPath = ffi.string(torch.data(self.imagePath[self.classListSample[class][index]]))
+      local imgpath = ffi.string(torch.data(self.imagePath[self.classListSample[class][index]]))
+      imagepaths[i] = imgpath
       local dst = self:getImageBuffer(i)
-      dst = samplefunc(self, dst, imgPath)
+      dst = samplefunc(self, dst, imgpath)
       table.insert(inputTable, dst)
       table.insert(targetTable, class)  
    end
@@ -288,7 +292,7 @@ function ImageClass:sample(batchsize, inputs, targets, samplefunc)
    self:tableToTensor(inputTable, targetTable, inputs, targets)
    
    self:collectgarbage()
-   return inputs, targets
+   return inputs, targets, imagepaths
 end
 
 -- converts a table of samples (and corresponding labels) to tensors
@@ -355,8 +359,8 @@ function ImageClass:sampleTrain(dst, path)
    -- do random crop
    local oW = self.samplesize[3]
    local oH = self.samplesize[2]
-   local h1 = math.ceil(torch.uniform(1e-2, iH-oH))
-   local w1 = math.ceil(torch.uniform(1e-2, iW-oW))
+   local h1 = math.ceil(torch.uniform(0, iH-oH))
+   local w1 = math.ceil(torch.uniform(0, iW-oW))
    local out = input:crop(oW, oH, w1, h1)
    -- do hflip with probability 0.5
    if torch.uniform() > 0.5 then 

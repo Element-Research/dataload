@@ -490,6 +490,85 @@ function dltest.loadPTB()
    end
 end
 
+function dltest.loadImageNet()
+   local nthread = 2
+   local batchsize = 200
+   local epochsize = 20000
+   local datapath = '/data2/ImageNet/'
+   
+   if not paths.dirp(datapath) then
+      return
+   end
+   
+   local train, valid = dl.loadImageNet(datapath, 2, nil, nil, true)
+   
+   -- test subiter
+   local a = torch.Timer()
+   local isum, tsum = 0, 0
+   for i, inputs, targets in valid:subiter(batchsize/10, epochsize) do
+      isum = isum + inputs:sum()
+      tsum = tsum + targets:sum()
+   end
+   print("async subiter", a:time().real)
+   
+   local a = torch.Timer()
+   local isum2, tsum2 = 0, 0
+   valid.dataset:reset()
+   for i, inputs, targets in valid.dataset:subiter(batchsize/10, epochsize) do
+      isum2 = isum2 + inputs:sum()
+      tsum2 = tsum2 + targets:sum()
+   end
+   print("sync subiter", a:time().real)
+   
+   mytester:assert(math.abs(isum - isum2) < 0.000001)
+   mytester:assert(math.abs(tsum - tsum2) < 0.000001)
+   
+   -- test sampleiter
+   local a = torch.Timer()
+   for i, inputs, targets, imagepaths in train.dataset:subiter(batchsize/10, epochsize) do
+      -- pass
+   end
+   print("sync sampleiter", a:time().real)
+   
+   local a = torch.Timer()
+   for i, inputs, targets, imagepaths in train:sampleiter(batchsize/10, epochsize) do
+      -- pass
+   end
+   print("async sampleiter", a:time().real)
+   
+   -- save some images from train and valid set loaders
+   
+   local samplepath = paths.concat(datapath, 'unittest')
+   paths.mkdir(samplepath)
+   for i, inputs, targets, imagepaths in train:sampleiter(batchsize/10, 400) do
+      for idx=1,inputs:size(1) do
+         local input, target = inputs[idx], targets[idx]
+         image.save(paths.concat(samplepath, target..'_t_'..paths.basename(imagepaths[idx])), input)
+      end
+   end
+   
+   for i, inputs, targets, imagepaths in valid:subiter(batchsize/10, 400) do
+      local inputs = inputs:view(-1, 10, 3, 224, 224)
+      local targets = targets:view(-1, 10)
+      for idx=1,inputs:size(1) do
+         for j=1,inputs:size(2) do
+            local input, target = inputs[idx][j], targets[idx][j]
+            image.save(paths.concat(samplepath, target..'_v_'..paths.basename(imagepaths[idx]))..j..'.jpg', input)
+         end
+      end
+   end
+end
+
+function dltest.fitImageNormalize()
+   local trainset, validset, testset = dl.loadMNIST()
+   local ppf = dl.fitImageNormalize(trainset, 5000)
+   
+   local inputs = validset:sample(100)
+   ppf(inputs)
+   mytester:assert(math.abs(inputs:mean()) < 0.05)
+   mytester:assert(math.abs(inputs:std() - 1) < 0.05) 
+end
+
 function dl.test(tests)
    math.randomseed(os.time())
    mytester = torch.Tester()
