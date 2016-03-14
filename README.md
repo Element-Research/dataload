@@ -14,6 +14,7 @@ specific datasets using the above loaders :
 
  * [MNIST](#dl.loadMNIST)
  * [Penn Tree Bank](#dl.loadPTB)
+ * [Image Net](#dl.loadImageNet)
 
 <a name='dl.DataLoader'></a>
 ## DataLoader
@@ -412,3 +413,63 @@ The `batchsize` specifies the number of samples that will be returned when
 iterating through the dataset. If specified as a table, its elements 
 specify the `batchsize` of commensurate `train`, `valid` and `test` tables. 
 We recommend a `batchsize` of 1 for evaluation sets (e.g. `{50,1,1}`).
+
+<a name='dl.loadImageNet'></a>
+## loadImageNet
+Ref.: A. http://image-net.org/challenges/LSVRC/2014/download-images-5jj5.php
+
+```lua
+train, valid = dl.loadImageNet(datapath, [nthread, loadsize, samplesize, verbose])
+``` 
+
+Returns the training and validation sets of the Large Scale Visual Recognition Challenge 2014 (ILSVRC2014)
+image classification dataset (commonly known as ImageNet). 
+The dataset hasn't changed from 2012-2014.
+
+The returned `train` and `valid` loaders do not read all images into memory when first loaded.
+Each dataset is implemented using an [ImageClass](#dl.ImageClass) loader decorated by an [AsyncIterator](#dl.AsyncIterator).
+
+The `datapath` should point to a directory containing the outputs of the `downloadimagenet.lua` and 
+`harmonizeimagenet.lua` scripts (see bellow).
+
+
+### Requirements
+
+Due to its size, the data first needs to be prepared offline.
+Use [downloadimagenet.lua](https://github.com/nicholas-leonard/dp/tree/master/scripts/downloadimagenet.lua) 
+to download and extract the data :
+
+```bash
+th downloadimagenet.lua --savePath '/path/to/diskspace/ImageNet'
+``` 
+
+The entire process requires about 360 GB of disk space to complete the download and extraction process.
+This can be reduced to about 150 GB if the training set is downloaded and extracted first, 
+and all the `.tar` files are manually deleted. Repeat for the validation set, devkit and metadata. 
+If you still don't have enough space in one partition, you can divide the data among different partitions.
+We recommend a good internet connection (>60Mbs download) and a Solid-State Drives (SSD).
+
+Use [harmonizeimagenet.lua](https://github.com/nicholas-leonard/dp/tree/master/scripts/harmonizeimagenet.lua) 
+to harmonize the train and validation sets:
+
+```bash
+th harmonizeimagenet.lua --dataPath /path/to/diskspace/ImageNet --progress --forReal
+``` 
+
+Each set will then contain a directory of images for each class with name `class[id]`
+where `[id]` is a class index, between 1 and 1000, used for the ILVRC2014 competition.
+
+Then we need to install [graphicsmagick](https://github.com/clementfarabet/graphicsmagick/blob/master/README.md) :
+
+```bash
+luarocks install graphicsmagick
+``` 
+
+
+### Inference
+
+As in the famous [(Krizhevsky et al. 2012)](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0CCMQFjAA&url=http%3A%2F%2Fwww.cs.toronto.edu%2F~fritz%2Fabsps%2Fimagenet.pdf&ei=k1j7VIOpNoyuggTbq4SQAQ&usg=AFQjCNGDafONr3DDGBbtw5AL9B_R8AeTCg)
+paper, the ImageNet training dataset samples images cropped from random 
+224x224 patches from the images resizes so that the smallest dimension has 
+size 256. As for the validation set, ten 224x224 patches are cropped per image,
+i.e. center, four corners and their horizontal flips, and their predictions are averaged. 

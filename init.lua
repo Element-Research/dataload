@@ -25,6 +25,7 @@ require 'dataload.AsyncIterator'
 require 'dataload.SequenceLoader'
 require 'dataload.loadMNIST'
 require 'dataload.loadPTB'
+require 'dataload.loadImageNet'
 require 'dataload.test'
 
 return dl
