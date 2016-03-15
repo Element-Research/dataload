@@ -17,6 +17,7 @@ function SequenceLoader:__init(sequence, batchsize, bidirectional)
    self.data = sequence.new()
    -- note that some data will be lost
    local seqlen2 = torch.floor(seqlen / batchsize)
+   -- seqlen2 x batchsize
    self.data = sequence:sub(1,seqlen2*batchsize):view(batchsize, seqlen2):t():contiguous()
 end
 

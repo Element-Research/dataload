@@ -129,8 +129,13 @@ function dl.buildVocab(tokens, minfreq)
    local vocab, ivocab = {}, {}
    local wordseq = 0
    
+   local _ = require 'moses'
+   -- make sure ordering is consistent
+   local words = _.sort(_.keys(wordfreq))
+   
    local oov = 0
-   for word, freq in pairs(wordfreq) do
+   for i, word in ipairs(words) do
+      local freq = wordfreq[word]
       if freq >= minfreq then
          wordseq = wordseq + 1
          vocab[word] = wordseq

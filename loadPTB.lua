@@ -1,7 +1,7 @@
 local dl = require 'dataload._env'
 
 -- Loads Penn Tree Bank train, valid, test sets
-function dl.loadPTB(batchsize, datapath, srcurl)
+function dl.loadPTB(batchsize, datapath, srcurl, vocab, ivocab, wordfreq)
    -- 1. arguments and defaults
    
    -- the size of the batch is fixed for SequenceLoaders
@@ -11,6 +11,10 @@ function dl.loadPTB(batchsize, datapath, srcurl)
    datapath = datapath or paths.concat(dl.DATA_PATH, 'PennTreeBank')
    -- URL from which to download dataset if not found on disk.
    srcurl = srcurl or 'https://raw.githubusercontent.com/wojzaremba/lstm/master/data/'
+   
+   if vocab then
+      assert(ivocab and wordfreq)
+   end
 
    -- 2. load raw data, convert to tensor
    
@@ -18,7 +22,6 @@ function dl.loadPTB(batchsize, datapath, srcurl)
    local stringx = require('pl.stringx')
    
    local loaders = {}
-   local vocab, ivocab, wordfreq
    for i,whichset in ipairs{'train', 'valid', 'test'} do
       -- download the file if necessary
       local filename = 'ptb.'..whichset..'.txt'
@@ -27,7 +30,7 @@ function dl.loadPTB(batchsize, datapath, srcurl)
       local text = file.read(filepath)
       text = stringx.replace(text, '\n', '<eos>')
       local tokens = stringx.split(text)
-      if whichset == 'train' then
+      if whichset == 'train' and not vocab then
          vocab, ivocab, wordfreq = dl.buildVocab(tokens)
       end
       local tensor = dl.text2tensor(tokens, vocab)
