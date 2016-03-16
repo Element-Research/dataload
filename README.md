@@ -17,13 +17,14 @@ The library provides the following generic data loader classes :
 The library also provides functions for downloading specific datasets 
 and preparing them using the above loaders :
 
- * [MNIST](#dl.loadMNIST)
- * [Penn Tree Bank](#dl.loadPTB)
- * [Image Net](#dl.loadImageNet)
+ * [loadMNIST](#dl.loadMNIST) : load the MNIST handwritten digit dataset for image classification;
+ * [loadImageNet](#dl.loadImageNet) : load the ILSVRC2014 dataset for image classification;
+ * [loadPTB](#dl.loadPTB) : load the Penn Tree Bank corpus for language modeling; 
+ * [loadGBW](#dl.loadGBW) : load the Google Billion Words corpus for language modeling.
  
 Also, we try to provide some useful preprocessing functions :
 
- * [fitImageNormalize](#dl.fitImageNormalize)
+ * [fitImageNormalize](#dl.fitImageNormalize) : normalize images by channel.
 
 <a name='dl.DataLoader'></a>
 ## DataLoader
