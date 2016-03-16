@@ -182,7 +182,7 @@ function dltest.TensorLoader()
       for i=1,inputs[1]:size(1) do
          local sum = inputs[1][i]:sum()
          local row = rowsums[sum]
-         mytester:assert(row)
+         mytester:assert(row ~= nil)
          rowcounts[row.idx] = rowcounts[row.idx] + 1
          
          mytester:assertTensorEq(row.inputs[1], inputs[1][i], 0.000001)
@@ -330,9 +330,9 @@ function dltest.AsyncIterator()
       bidx = bidx + 1
       n = n + inputs:size(1)
       local batch2 = batches[inputs:sum()]
-      mytester:assert(batch2)
-      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
-      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      mytester:assert(batch2 ~= nil)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0.0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0.0000001)
       batches[inputs:sum()] = nil
    end
    mytester:assert(bidx == 4)
@@ -353,9 +353,9 @@ function dltest.AsyncIterator()
    local nsampled
    for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
       local batch2 = batches[inputs:sum()]
-      mytester:assert(batch2)
-      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
-      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      mytester:assert(batch2 ~= nil)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0.0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0.0000001)
       batches[inputs:sum()] = nil
       nsampled = k
    end
@@ -373,9 +373,9 @@ function dltest.AsyncIterator()
    
    for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
       local batch2 = batches[inputs:sum()]
-      mytester:assert(batch2)
-      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
-      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      mytester:assert(batch2 ~= nil)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0.0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0.0000001)
       batches[inputs:sum()] = nil
       nsampled = k
    end
@@ -393,9 +393,9 @@ function dltest.AsyncIterator()
    
    for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
       local batch2 = batches[inputs:sum()]
-      mytester:assert(batch2)
-      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
-      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      mytester:assert(batch2 ~= nil)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0.0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0.0000001)
       batches[inputs:sum()] = nil
       nsampled = k
    end
@@ -420,7 +420,7 @@ function dltest.AsyncIterator()
       for i=1,inputs:size(1) do
          local sum = inputs[i]:sum()
          local row = rowsums[sum]
-         mytester:assert(row)
+         mytester:assert(row ~= nil)
          rowcounts[row.idx] = rowcounts[row.idx] + 1
          
          mytester:assertTensorEq(row.inputs, inputs[i], 0.000001)
@@ -476,8 +476,8 @@ function dltest.loadPTB()
    mytester:assert(vocabsize == 10000)
    mytester:assert(train:size() == math.floor(textsize/batchsize)-1)
    mytester:assert(not train.vocab['<OOV>'])
-   mytester:assert(valid)
-   mytester:assert(test)
+   mytester:assert(valid ~= nil)
+   mytester:assert(test ~= nil)
    
    if false then
       local sequence = {}
@@ -594,7 +594,7 @@ function dltest.MultiSequence()
          local outid = targets_[j]
          if seqidx == 0 then
             mytester:assert(inid == 0)
-            mytester:assert(outid == -1)
+            mytester:assert(outid == 1)
             seqidx = seqidx + 1
          else
             mytester:assert(seq[seqidx] == inid)
@@ -662,6 +662,26 @@ function dltest.MultiSequence()
       end
       mytester:assert(found)
    end
+end
+
+function dltest.loadGBW()
+   local batchsize = {50,1,1}
+   local trainfile = 'train_tiny.th7'
+   local a = torch.Timer()
+   local trainset, validset, testset = dl.loadGBW(batchsize, trainfile, nil, nil, false)
+   
+   local words = {}
+   local seqlen = 20
+   for i,inputs, targets in trainset:subiter(seqlen) do
+      for j=1,inputs:size(1) do
+         local word = trainset.ivocab[inputs[{j,3}]]
+         if word then
+            table.insert(words, word)
+         end
+      end
+   end
+   local words = table.concat(words, ' ')
+   mytester:assert(words:find('M3 money supply growth , which ran at 8.9pc in the year to August , and to bring policy interest rates , currently 2pc , above the reported inflation rate of 2.2pc. <S> THE Federal Reserve Board may want to scrutinize another statistic to gauge the health of the economy :') ~= nil)
 end
 
 function dl.test(tests)

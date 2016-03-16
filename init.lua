@@ -27,6 +27,7 @@ require 'dataload.MultiSequence'
 require 'dataload.loadMNIST'
 require 'dataload.loadPTB'
 require 'dataload.loadImageNet'
+require 'dataload.loadGBW'
 require 'dataload.preprocess'
 require 'dataload.test'
 

@@ -59,7 +59,7 @@ function MultiSequence:sub(start, stop, inputs, targets)
             -- (use with AbstractRecurrent:maskZero() and LookupTableMaskZero)
             if input:dim() == 1 then
                input[start] = 0
-               target[start] = -1
+               target[start] = 1
             else
                input[start]:fill(0)
                target[start]:fill(0)
