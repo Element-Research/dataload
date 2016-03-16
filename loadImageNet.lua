@@ -19,7 +19,7 @@ function dl.loadImageNet(datapath, nthread, loadsize, samplesize, verbose)
    loadsize = loadsize or {3, 256, 256}
    -- consistent size for cropped patches from loaded images.
    samplesize = samplesize or {3, 224, 224}
-   -- Verbose mode during initialization
+   -- verbose initialization
    verbose = verbose == nil and true or verbose
 
    -- path to training images

@@ -182,7 +182,7 @@ function dltest.TensorLoader()
       for i=1,inputs[1]:size(1) do
          local sum = inputs[1][i]:sum()
          local row = rowsums[sum]
-         mytester:assert(row)
+         mytester:assert(row ~= nil)
          rowcounts[row.idx] = rowcounts[row.idx] + 1
          
          mytester:assertTensorEq(row.inputs[1], inputs[1][i], 0.000001)
@@ -330,9 +330,9 @@ function dltest.AsyncIterator()
       bidx = bidx + 1
       n = n + inputs:size(1)
       local batch2 = batches[inputs:sum()]
-      mytester:assert(batch2)
-      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
-      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      mytester:assert(batch2 ~= nil)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0.0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0.0000001)
       batches[inputs:sum()] = nil
    end
    mytester:assert(bidx == 4)
@@ -353,9 +353,9 @@ function dltest.AsyncIterator()
    local nsampled
    for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
       local batch2 = batches[inputs:sum()]
-      mytester:assert(batch2)
-      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
-      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      mytester:assert(batch2 ~= nil)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0.0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0.0000001)
       batches[inputs:sum()] = nil
       nsampled = k
    end
@@ -373,9 +373,9 @@ function dltest.AsyncIterator()
    
    for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
       local batch2 = batches[inputs:sum()]
-      mytester:assert(batch2)
-      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
-      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      mytester:assert(batch2 ~= nil)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0.0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0.0000001)
       batches[inputs:sum()] = nil
       nsampled = k
    end
@@ -393,9 +393,9 @@ function dltest.AsyncIterator()
    
    for k, inputs, targets in ds2:subiter(batchsize, epochsize) do
       local batch2 = batches[inputs:sum()]
-      mytester:assert(batch2)
-      mytester:assertTensorEq(batch2.inputs, inputs, 0,0000001)
-      mytester:assertTensorEq(batch2.targets, targets, 0,0000001)
+      mytester:assert(batch2 ~= nil)
+      mytester:assertTensorEq(batch2.inputs, inputs, 0.0000001)
+      mytester:assertTensorEq(batch2.targets, targets, 0.0000001)
       batches[inputs:sum()] = nil
       nsampled = k
    end
@@ -420,7 +420,7 @@ function dltest.AsyncIterator()
       for i=1,inputs:size(1) do
          local sum = inputs[i]:sum()
          local row = rowsums[sum]
-         mytester:assert(row)
+         mytester:assert(row ~= nil)
          rowcounts[row.idx] = rowcounts[row.idx] + 1
          
          mytester:assertTensorEq(row.inputs, inputs[i], 0.000001)
@@ -476,8 +476,8 @@ function dltest.loadPTB()
    mytester:assert(vocabsize == 10000)
    mytester:assert(train:size() == math.floor(textsize/batchsize)-1)
    mytester:assert(not train.vocab['<OOV>'])
-   mytester:assert(valid)
-   mytester:assert(test)
+   mytester:assert(valid ~= nil)
+   mytester:assert(test ~= nil)
    
    if false then
       local sequence = {}
@@ -567,6 +567,121 @@ function dltest.fitImageNormalize()
    ppf(inputs)
    mytester:assert(math.abs(inputs:mean()) < 0.05)
    mytester:assert(math.abs(inputs:std() - 1) < 0.05) 
+end
+
+function dltest.MultiSequence()
+   local sequences = {}
+   for i=1,200 do
+      table.insert(sequences, torch.LongTensor(math.random(3,20)):random(1,100))
+   end
+   local batchsize = 4
+   local ds = dl.MultiSequence(sequences, 8)
+   local inputs, targets = ds:sub(1, 15)
+   
+   local seqid, seqidx = 0, -1
+   local seq
+   for i=1,inputs:size(2) do
+      local inputs_ = inputs:select(2,i)
+      local targets_ = targets:select(2,i)
+      if seqidx ~= 0 then
+         seqid = seqid + 1
+         seq = sequences[seqid]
+         seqidx = 0
+      end
+      
+      for j=1,inputs:size(1) do
+         local inid = inputs_[j]
+         local outid = targets_[j]
+         if seqidx == 0 then
+            mytester:assert(inid == 0)
+            mytester:assert(outid == 1)
+            seqidx = seqidx + 1
+         else
+            mytester:assert(seq[seqidx] == inid)
+            mytester:assert(seq[seqidx+1] == outid)
+            if seq[seqidx+1] ~= outid then
+               print(i, j)
+               print(seqid, seqidx)
+               print(seq)
+               print(inputs:t())
+               return
+            end
+            seqidx = seqidx + 1
+            if seqidx == seq:size(1) then
+               seqidx = 0
+               seqid = seqid + 1
+               seq = sequences[seqid]
+            end
+         end
+         
+      end
+   end
+   
+   local tensor = torch.LongTensor(ds:size())
+   
+   ds:reset()
+   local nstart = 0
+   local startidx = 1
+   for i, inputs, targets in ds:subiter(15) do
+      inputs:apply(function(x)
+         if x == 0 then
+            nstart = nstart + 1
+         end
+      end)
+      local stop = math.min(ds:size(), startidx + 15 - 1)
+      local size = stop - startidx + 1
+      tensor:narrow(1, startidx, size):copy(inputs:select(2,1))
+      startidx = startidx + size
+   end
+   mytester:assert(nstart >= 200 and nstart <= 200+(batchsize*2))
+   mytester:assert(startidx == ds:size() + 1)
+   
+   local eq = torch.LongTensor()
+   
+   local tensors = {}
+   local startidx = 1
+   local idx = 0
+   tensor:apply(function(x)
+      idx = idx + 1
+      if x == 0 and idx > 1 then
+         table.insert(tensors, tensor:sub(startidx+1,idx-1))
+         startidx = idx
+      end
+   end)
+   for i, tensor in ipairs(tensors) do
+      local found = false
+      mytester:assert(tensor:min() > 0)
+      for k,sequence in pairs(sequences) do
+         if tensor:size(1) == sequence:size(1)-1 then
+            if eq:eq(tensor, sequence:sub(1,-2)):min() == 1 then
+               found = true
+               sequences[k] = nil
+               break
+            end
+         end
+      end
+      mytester:assert(found)
+   end
+end
+
+function dltest.loadGBW()
+   local batchsize = {50,1,1}
+   local trainfile = 'train_tiny.th7'
+   local a = torch.Timer()
+   local trainset, validset, testset = dl.loadGBW(batchsize, trainfile, nil, nil, false)
+   
+   local words = {}
+   local seqlen = 20
+   for i,inputs, targets in trainset:subiter(seqlen) do
+      for j=1,inputs:size(1) do
+         local word = trainset.ivocab[inputs[{j,3}]]
+         if word then
+            table.insert(words, word)
+         end
+      end
+   end
+   local words = table.concat(words, ' ')
+   mytester:assert(words:find('M3 money supply growth , which ran at 8.9pc in the year to August , and to bring policy interest rates , currently 2pc , above the reported inflation rate of 2.2pc. <S> THE Federal Reserve Board may want to scrutinize another statistic to gauge the health of the economy :') ~= nil)
 end
 
 function dl.test(tests)

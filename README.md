@@ -1,13 +1,18 @@
 # dataload
 
+```lua
+local dl = require 'dataload'
+``` 
+
 A collection of Torch dataset loaders. 
 The library provides the following generic data loader classes :
  
  * [DataLoader](#dl.DataLoader) : an abstract class inherited by the following classes;
  * [TensorLoader](#dl.TensorLoader) : for tensor or nested (i.e. tables of) tensor datasets;
  * [ImageClass](#dl.ImageClass) : for image classification datasets stored in a flat folder structure;
+ * [AsyncIterator](#dl.AsyncIterator) : decorates a `DataLoader` for asynchronou multi-threaded iteration;
  * [SequenceLoader](#dl.SequenceLoader) : for sequence datasets like language or time-series;
- * [AsyncIterator](#dl.AsyncIterator) : decorates a `DataLoader` for asynchronou multi-threaded iteration.
+ * [MultiSequence](#dl.MultiSequence) : for shuffled sets of sequence datasets like shuffled sentences.
 
 The library also provides functions for downloading specific datasets 
 and preparing them using the above loaders :
@@ -347,7 +352,10 @@ The `sequence` is a tensor where the first dimension indexes time.
 Internally, the loader will split the `sequence` into `batchsize` subsequences.
 Calling the `sub(start, stop, inputs, targets)` method will return 
 `inputs` and `targets` of size `seqlen x batchsize [x inputsize]`
-where `stop - start + 1 <= seqlen`.
+where `stop - start + 1 <= seqlen`. 
+See [RNNLM training script](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-language-model.lua) for an example.
+
+
 The `bidirectional` argument should be set 
 to `true` for bidirectional models like BRNN/BLSTMs. In which case,
 the returned `inputs` and `targets` will be aligned. 
@@ -384,6 +392,30 @@ print(inputs:t(), targets:t())
 [torch.IntTensor of size 3x5]
 ``` 
 
+<a name='dl.MultiSequence'></a>
+## MultiSequence
+
+```lua
+dataloader = dl.MultiSequence(sequences, batchsize)
+``` 
+
+This [DataLoader](#dl.DataLoader) subclass is used by the [Billion Words](#dl.loadGBW) dataset to encapsulate unordered sentences.
+The `sequences` arguments is a table or [tds.Vec](https://github.com/torch/tds#d--tdsvec--tbl) of tensors.
+Each such tensors is a single sequence independent of the others.
+
+When calling `sub(start, stop)` or `subiter(seqlen)` methods, 
+a column of the returned `inputs` and `targets` tensors (of size `seqlen x batchsize`) could 
+contain multiple sequences. For example, a character-level language model could look like:
+```
+target : [ ] E L L O [ ] C R E E N ...
+input  : [ ] H E L L [ ] S C R E E ...
+``` 
+where `HELLO` and `SCREEN` would be two independent sequences.
+Note that `[ ]` is a zero mask used to seperate independent sequences.
+For most cases, the `[ ]` token is a 0. 
+Except for 1D `targets`, where it is a 1 (so that it works with `ClassNLLCriterion`). 
+
+
 <a name='dl.loadMNIST'></a>
 ## loadMNIST
 
@@ -417,6 +449,8 @@ The `batchsize` specifies the number of samples that will be returned when
 iterating through the dataset. If specified as a table, its elements 
 specify the `batchsize` of commensurate `train`, `valid` and `test` tables. 
 We recommend a `batchsize` of 1 for evaluation sets (e.g. `{50,1,1}`).
+
+See [RNNLM training script](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-language-model.lua) for an example.
 
 <a name='dl.loadImageNet'></a>
 ## loadImageNet
@@ -478,6 +512,21 @@ paper, the ImageNet training dataset samples images cropped from random
 size 256. As for the validation set, ten 224x224 patches are cropped per image,
 i.e. center, four corners and their horizontal flips, and their predictions are averaged. 
 
+<a name='dl.loadGBW'></a>
+## loadGBW
+
+```lua
+train, valid, test = dl.loadGBW(batchsize, [trainfile, datapath, srcurl, verbose])
+``` 
+
+Loads the Google Billion Words corpus as [MultiSequence](#dl.MultiSequence) loaders.
+The preprocessing specified in
+[Google Billion Words language modeling benchmark](https://code.google.com/p/1-billion-word-language-modeling-benchmark) 
+was applied to `training-monolingual.tokenized/news.20??.en.shuffled.tokenized` to generate the different subsets.
+These subsets are automatically downloaded when not found on disk. 
+The task consists in predicting the next word given the previous ones.
+The corpus contains approximately 30 million sentences of an average length of about 25 words. 
+In total, there are about 800 thousand (unique) words in the vocabulary, which makes it a very memory intensive problem.
 
 <a name='dl.fitImageNormalize'></a>
 ## fitImageNormalize
