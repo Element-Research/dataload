@@ -58,7 +58,7 @@ end
 function SequenceLoader:isize(excludedim)
    -- by default, sequence dimension is excluded
    excludedim = excludedim == nil and 1 or excludedim
-   local size = torchx.recursiveSize(self.inputs, excludedim)
+   local size = torchx.recursiveSize(self.data, excludedim)
    if excludedim ~= 1 then
       size[1] = self:size()
    end

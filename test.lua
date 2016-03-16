@@ -569,6 +569,101 @@ function dltest.fitImageNormalize()
    mytester:assert(math.abs(inputs:std() - 1) < 0.05) 
 end
 
+function dltest.MultiSequence()
+   local sequences = {}
+   for i=1,200 do
+      table.insert(sequences, torch.LongTensor(math.random(3,20)):random(1,100))
+   end
+   local batchsize = 4
+   local ds = dl.MultiSequence(sequences, 8)
+   local inputs, targets = ds:sub(1, 15)
+   
+   local seqid, seqidx = 0, -1
+   local seq
+   for i=1,inputs:size(2) do
+      local inputs_ = inputs:select(2,i)
+      local targets_ = targets:select(2,i)
+      if seqidx ~= 0 then
+         seqid = seqid + 1
+         seq = sequences[seqid]
+         seqidx = 0
+      end
+      
+      for j=1,inputs:size(1) do
+         local inid = inputs_[j]
+         local outid = targets_[j]
+         if seqidx == 0 then
+            mytester:assert(inid == 0)
+            mytester:assert(outid == -1)
+            seqidx = seqidx + 1
+         else
+            mytester:assert(seq[seqidx] == inid)
+            mytester:assert(seq[seqidx+1] == outid)
+            if seq[seqidx+1] ~= outid then
+               print(i, j)
+               print(seqid, seqidx)
+               print(seq)
+               print(inputs:t())
+               return
+            end
+            seqidx = seqidx + 1
+            if seqidx == seq:size(1) then
+               seqidx = 0
+               seqid = seqid + 1
+               seq = sequences[seqid]
+            end
+         end
+         
+      end
+   end
+   
+   local tensor = torch.LongTensor(ds:size())
+   
+   ds:reset()
+   local nstart = 0
+   local startidx = 1
+   for i, inputs, targets in ds:subiter(15) do
+      inputs:apply(function(x)
+         if x == 0 then
+            nstart = nstart + 1
+         end
+      end)
+      local stop = math.min(ds:size(), startidx + 15 - 1)
+      local size = stop - startidx + 1
+      tensor:narrow(1, startidx, size):copy(inputs:select(2,1))
+      startidx = startidx + size
+   end
+   mytester:assert(nstart >= 200 and nstart <= 200+(batchsize*2))
+   mytester:assert(startidx == ds:size() + 1)
+   
+   local eq = torch.LongTensor()
+   
+   local tensors = {}
+   local startidx = 1
+   local idx = 0
+   tensor:apply(function(x)
+      idx = idx + 1
+      if x == 0 and idx > 1 then
+         table.insert(tensors, tensor:sub(startidx+1,idx-1))
+         startidx = idx
+      end
+   end)
+   for i, tensor in ipairs(tensors) do
+      local found = false
+      mytester:assert(tensor:min() > 0)
+      for k,sequence in pairs(sequences) do
+         if tensor:size(1) == sequence:size(1)-1 then
+            if eq:eq(tensor, sequence:sub(1,-2)):min() == 1 then
+               found = true
+               sequences[k] = nil
+               break
+            end
+         end
+      end
+      mytester:assert(found)
+   end
+end
+
 function dl.test(tests)
    math.randomseed(os.time())
    mytester = torch.Tester()
