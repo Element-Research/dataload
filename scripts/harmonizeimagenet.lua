@@ -1,4 +1,5 @@
 local dl = require 'dataload'
+local _ = require 'moses'
 
 cmd = torch.CmdLine()
 cmd:text()
