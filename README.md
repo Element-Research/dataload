@@ -1,19 +1,30 @@
 # dataload
 
+```lua
+local dl = require 'dataload'
+``` 
+
 A collection of Torch dataset loaders. 
 The library provides the following generic data loader classes :
  
  * [DataLoader](#dl.DataLoader) : an abstract class inherited by the following classes;
  * [TensorLoader](#dl.TensorLoader) : for tensor or nested (i.e. tables of) tensor datasets;
  * [ImageClass](#dl.ImageClass) : for image classification datasets stored in a flat folder structure;
+ * [AsyncIterator](#dl.AsyncIterator) : decorates a `DataLoader` for asynchronou multi-threaded iteration;
  * [SequenceLoader](#dl.SequenceLoader) : for sequence datasets like language or time-series;
- * [AsyncIterator](#dl.AsyncIterator) : decorates a `DataLoader` for asynchronou multi-threaded iteration.
+ * [MultiSequence](#dl.MultiSequence) : for shuffled sets of sequence datasets like shuffled sentences.
 
-The library also provides functions for downloading and wrapping 
-specific datasets using the above loaders :
+The library also provides functions for downloading specific datasets 
+and preparing them using the above loaders :
 
- * [MNIST](#dl.loadMNIST)
- * [Penn Tree Bank](#dl.loadPTB)
+ * [loadMNIST](#dl.loadMNIST) : load the MNIST handwritten digit dataset for image classification;
+ * [loadImageNet](#dl.loadImageNet) : load the ILSVRC2014 dataset for image classification;
+ * [loadPTB](#dl.loadPTB) : load the Penn Tree Bank corpus for language modeling; 
+ * [loadGBW](#dl.loadGBW) : load the Google Billion Words corpus for language modeling.
+ 
+Also, we try to provide some useful preprocessing functions :
+
+ * [fitImageNormalize](#dl.fitImageNormalize) : normalize images by channel.
 
 <a name='dl.DataLoader'></a>
 ## DataLoader
@@ -342,7 +353,10 @@ The `sequence` is a tensor where the first dimension indexes time.
 Internally, the loader will split the `sequence` into `batchsize` subsequences.
 Calling the `sub(start, stop, inputs, targets)` method will return 
 `inputs` and `targets` of size `seqlen x batchsize [x inputsize]`
-where `stop - start + 1 <= seqlen`.
+where `stop - start + 1 <= seqlen`. 
+See [RNNLM training script](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-language-model.lua) for an example.
+
+
 The `bidirectional` argument should be set 
 to `true` for bidirectional models like BRNN/BLSTMs. In which case,
 the returned `inputs` and `targets` will be aligned. 
@@ -379,6 +393,30 @@ print(inputs:t(), targets:t())
 [torch.IntTensor of size 3x5]
 ``` 
 
+<a name='dl.MultiSequence'></a>
+## MultiSequence
+
+```lua
+dataloader = dl.MultiSequence(sequences, batchsize)
+``` 
+
+This [DataLoader](#dl.DataLoader) subclass is used by the [Billion Words](#dl.loadGBW) dataset to encapsulate unordered sentences.
+The `sequences` arguments is a table or [tds.Vec](https://github.com/torch/tds#d--tdsvec--tbl) of tensors.
+Each such tensors is a single sequence independent of the others.
+
+When calling `sub(start, stop)` or `subiter(seqlen)` methods, 
+a column of the returned `inputs` and `targets` tensors (of size `seqlen x batchsize`) could 
+contain multiple sequences. For example, a character-level language model could look like:
+```
+target : [ ] E L L O [ ] C R E E N ...
+input  : [ ] H E L L [ ] S C R E E ...
+``` 
+where `HELLO` and `SCREEN` would be two independent sequences.
+Note that `[ ]` is a zero mask used to seperate independent sequences.
+For most cases, the `[ ]` token is a 0. 
+Except for 1D `targets`, where it is a 1 (so that it works with `ClassNLLCriterion`). 
+
+
 <a name='dl.loadMNIST'></a>
 ## loadMNIST
 
@@ -412,3 +450,100 @@ The `batchsize` specifies the number of samples that will be returned when
 iterating through the dataset. If specified as a table, its elements 
 specify the `batchsize` of commensurate `train`, `valid` and `test` tables. 
 We recommend a `batchsize` of 1 for evaluation sets (e.g. `{50,1,1}`).
+
+See [RNNLM training script](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-language-model.lua) for an example.
+
+<a name='dl.loadImageNet'></a>
+## loadImageNet
+Ref.: A. http://image-net.org/challenges/LSVRC/2014/download-images-5jj5.php
+
+```lua
+train, valid = dl.loadImageNet(datapath, [nthread, loadsize, samplesize, verbose])
+``` 
+
+Returns the training and validation sets of the Large Scale Visual Recognition Challenge 2014 (ILSVRC2014)
+image classification dataset (commonly known as ImageNet). 
+The dataset hasn't changed from 2012-2014.
+
+The returned `train` and `valid` loaders do not read all images into memory when first loaded.
+Each dataset is implemented using an [ImageClass](#dl.ImageClass) loader decorated by an [AsyncIterator](#dl.AsyncIterator).
+
+The `datapath` should point to a directory containing the outputs of the `downloadimagenet.lua` and 
+`harmonizeimagenet.lua` scripts (see bellow).
+
+
+### Requirements
+
+Due to its size, the data first needs to be prepared offline.
+Use [downloadimagenet.lua](https://github.com/nicholas-leonard/dp/tree/master/scripts/downloadimagenet.lua) 
+to download and extract the data :
+
+```bash
+th downloadimagenet.lua --savePath '/path/to/diskspace/ImageNet'
+``` 
+
+The entire process requires about 360 GB of disk space to complete the download and extraction process.
+This can be reduced to about 150 GB if the training set is downloaded and extracted first, 
+and all the `.tar` files are manually deleted. Repeat for the validation set, devkit and metadata. 
+If you still don't have enough space in one partition, you can divide the data among different partitions.
+We recommend a good internet connection (>60Mbs download) and a Solid-State Drives (SSD).
+
+Use [harmonizeimagenet.lua](https://github.com/nicholas-leonard/dp/tree/master/scripts/harmonizeimagenet.lua) 
+to harmonize the train and validation sets:
+
+```bash
+th harmonizeimagenet.lua --dataPath /path/to/diskspace/ImageNet --progress --forReal
+``` 
+
+Each set will then contain a directory of images for each class with name `class[id]`
+where `[id]` is a class index, between 1 and 1000, used for the ILVRC2014 competition.
+
+Then we need to install [graphicsmagick](https://github.com/clementfarabet/graphicsmagick/blob/master/README.md) :
+
+```bash
+luarocks install graphicsmagick
+``` 
+
+
+### Inference
+
+As in the famous [(Krizhevsky et al. 2012)](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0CCMQFjAA&url=http%3A%2F%2Fwww.cs.toronto.edu%2F~fritz%2Fabsps%2Fimagenet.pdf&ei=k1j7VIOpNoyuggTbq4SQAQ&usg=AFQjCNGDafONr3DDGBbtw5AL9B_R8AeTCg)
+paper, the ImageNet training dataset samples images cropped from random 
+224x224 patches from the images resizes so that the smallest dimension has 
+size 256. As for the validation set, ten 224x224 patches are cropped per image,
+i.e. center, four corners and their horizontal flips, and their predictions are averaged. 
+
+<a name='dl.loadGBW'></a>
+## loadGBW
+
+```lua
+train, valid, test = dl.loadGBW(batchsize, [trainfile, datapath, srcurl, verbose])
+``` 
+
+Loads the Google Billion Words corpus as [MultiSequence](#dl.MultiSequence) loaders.
+The preprocessing specified in
+[Google Billion Words language modeling benchmark](https://code.google.com/p/1-billion-word-language-modeling-benchmark) 
+was applied to `training-monolingual.tokenized/news.20??.en.shuffled.tokenized` to generate the different subsets.
+These subsets are automatically downloaded when not found on disk. 
+The task consists in predicting the next word given the previous ones.
+The corpus contains approximately 30 million sentences of an average length of about 25 words. 
+In total, there are about 800 thousand (unique) words in the vocabulary, which makes it a very memory intensive problem.
+
+<a name='dl.fitImageNormalize'></a>
+## fitImageNormalize
+
+```lua
+ppf = dl.fitImageNormalize(trainset, [nsample, cachepath, verbose])
+``` 
+
+Returns a `ppf` preprocessing function that can be used to in-place normalize a batch of images (`inputs`) 
+channel-wise : 
+
+```lua
+ppf(inputs)
+``` 
+
+The `trainset` argument is a [DataLoader](#dl.DataLoader) instance
+containing image `inputs`. The mean and standard deviation will be measured 
+on `nsample` images (default 10000). When `cachepath` is provided, the 
+mean and standard deviation are saved for the next function call.

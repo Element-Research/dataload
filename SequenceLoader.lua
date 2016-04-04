@@ -17,6 +17,7 @@ function SequenceLoader:__init(sequence, batchsize, bidirectional)
    self.data = sequence.new()
    -- note that some data will be lost
    local seqlen2 = torch.floor(seqlen / batchsize)
+   -- seqlen2 x batchsize
    self.data = sequence:sub(1,seqlen2*batchsize):view(batchsize, seqlen2):t():contiguous()
 end
 
@@ -57,7 +58,7 @@ end
 function SequenceLoader:isize(excludedim)
    -- by default, sequence dimension is excluded
    excludedim = excludedim == nil and 1 or excludedim
-   local size = torchx.recursiveSize(self.inputs, excludedim)
+   local size = torchx.recursiveSize(self.data, excludedim)
    if excludedim ~= 1 then
       size[1] = self:size()
    end

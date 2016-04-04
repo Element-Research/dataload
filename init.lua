@@ -23,9 +23,13 @@ require 'dataload.TensorLoader'
 require 'dataload.ImageClass'
 require 'dataload.AsyncIterator'
 require 'dataload.SequenceLoader'
+require 'dataload.MultiSequence'
 require 'dataload.loadMNIST'
 require 'dataload.loadPTB'
 require 'dataload.loadTwitterSentiment'
+require 'dataload.loadImageNet'
+require 'dataload.loadGBW'
+require 'dataload.preprocess'
 require 'dataload.test'
 
 return dl
