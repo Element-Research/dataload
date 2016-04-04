@@ -169,6 +169,13 @@ function dl.text2tensor(tokens, vocab)
    return tensor
 end
 
+function dl.splitString(str,sep)
+   local sep, fields = sep or ":", {}
+   local pattern = string.format("([^%s]+)", sep)
+   str:gsub(pattern, function(c) fields[#fields+1] = c end)
+   return fields
+end
+
 -- misc.
 
 function dl.hostname()
