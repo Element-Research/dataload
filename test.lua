@@ -490,6 +490,31 @@ function dltest.loadPTB()
    end
 end
 
+function dltest.loadTwitterSentiment()
+   local train, valid, test = dl.loadTwitterSentiment()
+   
+   mytester:assert(#valid == 200000)
+   local textsize, vocabsize = 0, 0
+   for word, wordid in pairs(valid.vocab) do
+      textsize = textsize + valid.wordfreq[word]
+      vocabsize = vocabsize + 1
+   end
+   mytester:assert(vocabsize == 200000)
+   --mytester:assert(not train.vocab['<OOV>'])
+   mytester:assert(train)
+   mytester:assert(test)
+   
+   if false then
+      local sequence = {}
+      for i,inputs,targets in valid:subiter(seqlen) do
+         for k=1,inputs:size(1) do
+            table.insert(sequence, valid.ivocab[inputs[{k,1}]] or 'WTF?')
+         end
+      end
+      print(table.concat(sequence, ' '))
+   end
+end
+
 function dl.test(tests)
    math.randomseed(os.time())
    mytester = torch.Tester()
