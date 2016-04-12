@@ -217,17 +217,16 @@ end
 
 function dltest.ImageClass()
    local datapath = paths.concat(dl.DATA_PATH, "_unittest_")
+   local buffer
    
    if not paths.dirp(datapath) then
       -- create a dummy dataset based on MNIST
       local mnist = dl.loadMNIST()
       
-      
       os.execute("rm -r "..datapath)
       
       paths.mkdir(datapath)
       
-      local buffer
       local inputs, targets
       for i=1,10 do
          local classpath = paths.concat(datapath, "class"..i)
@@ -250,8 +249,30 @@ function dltest.ImageClass()
       end
    end
    
+   local ignorepath = paths.concat(datapath, 'class1/ignore')
+   if not paths.dirp(ignorepath) then
+      local mnist = dl.loadMNIST()
+      paths.mkdir(ignorepath)
+      local inputs, targets = mnist:sample(10, inputs, targets)
+      for j=1,10 do
+         local input = inputs[j]
+         if math.random() < 0.5 then
+            buffer = buffer or inputs.new()
+            if math.random() < 0.5 then 
+               buffer:resize(1, 32, 28)
+            else
+               buffer:resize(1, 28, 32)
+            end
+            image.scale(buffer, input)
+            input = buffer
+         end
+         image.save(paths.concat(ignorepath, "image"..j..".jpg"), input)
+      end
+   end
+      
+   
    -- Note that I can't really test scaling as gm and image scale differently
-   local ds = dl.ImageClass(datapath, {1, 28, 28}, {1, 28, 28}, nil, nil, false)
+   local ds = dl.ImageClass(datapath, {1, 28, 28}, {1, 28, 28}, nil, nil, false, nil, "*/ignore/*")
    
    -- test index
    local inputs, targets = ds:index(torch.LongTensor():range(201,300))
