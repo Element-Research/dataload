@@ -326,13 +326,13 @@ Constructor arguments are as follows :
 ## AsyncIterator
 
 ```lua
-dataloader = dl.AsyncIterator(dataloader, [nthread, verbose])
+dataloader = dl.AsyncIterator(dataloader, [nthread, verbose, serialmode])
 ``` 
 
 This `DataLoader` subclass overwrites the [`subiter`](#dl.DataLoad.subiter) and [`sampleiter`](#dl.DataLoad.subiter)
 iterator methods. The implementation uses the [threads](https://github.com/torch/threads) package to 
 build a pool of `nthread` worker threads. The main thread delegates the tasks of building `inputs` and `targets` tensors 
-to the workers. The workers each have a deep copy of the decorated `dataloader`.
+to the workers. The workers each have a deep copy of the decorated `dataloader`. The optional parameter serialmode can be specified as 'ascii' (default) or 'binary'. If large amounts of data need to be processed, 'binary' can prevent the dataloader from allocating too much RAM.
 When a task is received from the main thread through the Queue, they call [`sample`](#dl.DataLoad.sample)
 or [`sub`](#dl.DataLoad.sub) to build the batch and return the `inputs` and `targets` to the 
 main thread. The iteration is asynchronous as the first iteration will fill the Queue with `nthread` tasks.
