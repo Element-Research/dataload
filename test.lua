@@ -493,13 +493,13 @@ end
 function dltest.loadTwitterSentiment()
    local train, valid, test = dl.loadTwitterSentiment()
    
-   mytester:assert(#valid == 200000)
+   mytester:assert(#test == 498)
    local textsize, vocabsize = 0, 0
-   for word, wordid in pairs(valid.vocab) do
-      textsize = textsize + valid.wordfreq[word]
+   for word, wordid in pairs(test.vocab) do
+      textsize = textsize + test.wordfreq[word]
       vocabsize = vocabsize + 1
    end
-   mytester:assert(vocabsize == 200000)
+   mytester:assert(vocabsize == 2393)
    --mytester:assert(not train.vocab['<OOV>'])
    mytester:assert(train)
    mytester:assert(test)
