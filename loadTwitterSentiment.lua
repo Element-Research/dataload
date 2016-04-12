@@ -14,7 +14,7 @@ local dl = require 'dataload._env'
    4 - the user that tweeted (robotickilldozr)
    5 - the text of the tweet (Lyx is cool)  
 --]]
-function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl)
+function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl, showprogress)
    -- 1. arguments and defaults
    
    -- path to directory containing Twitter dataset on disk
@@ -25,12 +25,14 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl)
    scale = scale == nil and {0,1} or scale
    -- URL from which to download dataset if not found on disk.
    srcurl = srcurl or 'http://cs.stanford.edu/people/alecmgo/trainingandtestdata.zip'
+   -- debug
+   local showprogress = showprogress or false
    
    -- 2. load raw data
    
    -- download and decompress the file if necessary
-   local traindatafile = paths.concat(datapath, 'traintokens.1600000.processed.noemoticon.csv')
    local testdatafile = paths.concat(datapath, 'testtokens.manual.2009.06.14.csv')
+   local traindatafile = testdatafile --paths.concat(datapath, 'traintokens.1600000.processed.noemoticon.csv')
    if not paths.filep(testdatafile) then
       print('not found ' .. testdatafile .. ', start fresh downloading...')
       local origtraindatafile = paths.concat(datapath, 'training.1600000.processed.noemoticon.csv')
@@ -44,55 +46,85 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl)
       res = sys.execute(cmdstr)
    end
    
-   -- load train/test files
-   local traindata, traincontent = dl.loadTwitterCSV(traindatafile)
-   local testdata, testcontent = dl.loadTwitterCSV(testdatafile)
+   -- load train file
+   local traindata, traincontent = dl.loadTwitterCSV(traindatafile, '","', ' ', showprogress)
    
    -- 3. split into train, valid test
+   print('build training vocabulary')
    local train, trainwords = {}, {}
-   local idx, trainnum = 0, math.floor((1-validratio)*#traindata)
+   local trainnum = math.floor((1-validratio)*#traindata)
    for i = 1,trainnum do
-      table.insert(train, traindata[i])
       for j = 1,#traincontent[i] do
          table.insert(trainwords, traincontent[i][j])
       end
-      idx = idx+1
+      if showprogress and math.fmod(i, 100)==0 then
+         xlua.progress(i, trainnum)
+         --print(i, #traincontent[i])
+      end
    end
+   local train_vocab, train_ivocab, train_wordfreq = dl.buildVocab(trainwords)
+   trainwords = nil
    collectgarbage()
-   
+   for i = 1,trainnum do
+      table.insert(train, traindata[i])
+      if showprogress and math.fmod(i, 100)==0 then
+         xlua.progress(i, trainnum)
+      end
+   end
+   train.vocab, train.ivocab, train.wordfreq = train_vocab, train_ivocab, train_wordfreq 
+   collectgarbage()
+    
+   if showprogress then
+      print('build validation vocabulary')
+   end
    local valid, validwords = {}, {}
-   for i = idx+1,#traindata do
+   for i = trainnum+1,#traindata do
       table.insert(valid, traindata[i])
       for j = 1,#traincontent[i] do
          table.insert(validwords, traincontent[i][j])
       end
+      if showprogress and math.fmod(i, 100)==0 then
+         xlua.progress(i, #traindata)
+      end
+   end
+   valid.vocab, valid.ivocab, valid.wordfreq = dl.buildVocab(validwords)
+   validwords = nil
+   traincontent = nil
+   collectgarbage()
+
+   -- load test file
+   local testdata, testcontent = dl.loadTwitterCSV(testdatafile, '","', ' ', showprogress)
+   if showprogress then
+      print('build testing vocabulary')
    end
    local test, testwords = testdata, {}
    for i,tc in ipairs(testcontent) do
       for j = 1,#tc do
          table.insert(testwords, tc[j])
       end
+      if showprogress and math.fmod(i, 100)==0 then
+         xlua.progress(i, #testcontent)
+      end
    end
-   collectgarbage()
-
-   -- 4. build vocabulary for each set
-   print('build training vocabulary')
-   train.vocab, train.ivocab, train.wordfreq = dl.buildVocab(trainwords)
-   print('build validation vocabulary')
-   valid.vocab, valid.ivocab, valid.wordfreq = dl.buildVocab(validwords)
-   print('build testing vocabulary')
    test.vocab,  test.ivocab,  test.wordfreq  = dl.buildVocab(testwords)
+   testwords = nil
+   testcontent = nil
    collectgarbage()
 
    return train, valid, test
 end
 
-function dl.loadTwitterCSV(filename, sep, contentsep)
+function dl.loadTwitterCSV(filename, sep, contentsep, showprogress)
    local sep = sep or '","'
    local contentsep = contentsep or ' '
-   print('loading ' .. filename, sep, contentsep)
+   local showprogress = showprogress or false
+   if showprogress then
+      print('loading ' .. filename, sep, contentsep)
+   end
+   local nlines = dl.getNumberOfLines(filename)
    local filelines = io.open(filename):lines()
    local fieldstable, contenttable = {}, {}
+   local tablesize=0
    for line in filelines do
       local vs = dl.splitString(line, sep)
       vs[1] = vs[1]:sub(2,#vs[1])
@@ -100,6 +132,13 @@ function dl.loadTwitterCSV(filename, sep, contentsep)
       vs[6] = dl.splitString(vs[6], contentsep)
       table.insert(fieldstable, vs)
       table.insert(contenttable, vs[6])
+      tablesize = tablesize + 1
+      if showprogress and math.fmod(tablesize, 100)==0 then
+         xlua.progress(tablesize, nlines)
+      end
+   end
+   if showprogress then
+      print('# items loaded ' .. tablesize)
    end
    return fieldstable, contenttable
 end

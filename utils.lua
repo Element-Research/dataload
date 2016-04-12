@@ -181,6 +181,14 @@ function dl.splitString(str,sep)
    return fields
 end
 
+function dl.getNumberOfLines(filename)
+   local ctr = 0
+   for _ in io.lines(filename) do
+      ctr = ctr +1
+   end
+   return ctr
+end
+
 -- misc.
 
 function dl.hostname()
