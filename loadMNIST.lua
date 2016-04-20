@@ -52,6 +52,7 @@ function dl.loadMNIST(datapath, validratio, scale, srcurl)
    -- 4. split into train, valid test
 
    local train, valid = loaders[1]:split(1-validratio)
+   valid.classes = train.classes
    local test = loaders[2]
 
    return train, valid, test
