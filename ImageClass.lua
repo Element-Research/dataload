@@ -10,7 +10,7 @@
 local dl = require 'dataload._env'
 local ImageClass, parent = torch.class('dl.ImageClass', 'dl.DataLoader', dl)
 
-function ImageClass:__init(datapath, loadsize, samplesize, samplefunc, sortfunc, verbose)
+function ImageClass:__init(datapath, loadsize, samplesize, samplefunc, sortfunc, verbose, excludeFile, excludeDir)
    -- 1. arguments
    
    -- one or many paths of directories with images
@@ -101,6 +101,12 @@ function ImageClass:__init(datapath, loadsize, samplesize, samplefunc, sortfunc,
    local findOptions = ' -iname "*.' .. extensionList[1] .. '"'
    for i=2,#extensionList do
       findOptions = findOptions .. ' -o -iname "*.' .. extensionList[i] .. '"'
+   end
+   if excludeFile then -- only ignores patterns in filename
+      findOptions = '! -iname "'..excludeFile..'" \\(' .. findOptions .. " \\)"
+   end
+   if excludeDir then -- only ignores patterns directories
+      findOptions = '-not -path "'..excludeDir..'" \\(' .. findOptions .. " \\)"
    end
 
    -- find the image path names
