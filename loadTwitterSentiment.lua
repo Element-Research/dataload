@@ -12,7 +12,12 @@ local dl = require 'dataload._env'
    2 - the date of the tweet (Sat May 16 23:58:44 UTC 2009)
    3 - the query (lyx). If there is no query, then this value is NO_QUERY.
    4 - the user that tweeted (robotickilldozr)
-   5 - the text of the tweet (Lyx is cool)  
+   5 - the text of the tweet (Lyx is cool)
+
+  Warning:
+   It might give an out-of-memory error to run this script on Torch with LuaJIT.
+   Recommended to use Torch with Lua installation
+   (please refer to https://github.com/torch/distro for installation steps).
 --]]
 function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl, showprogress)
    -- 1. arguments and defaults
@@ -26,13 +31,13 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl, showprogre
    -- URL from which to download dataset if not found on disk.
    srcurl = srcurl or 'http://cs.stanford.edu/people/alecmgo/trainingandtestdata.zip'
    -- debug
-   local showprogress = showprogress or false
+   local showprogress = showprogress or true --false
    
    -- 2. load raw data
    
    -- download and decompress the file if necessary
    local testdatafile = paths.concat(datapath, 'testtokens.manual.2009.06.14.csv')
-   local traindatafile = testdatafile --paths.concat(datapath, 'traintokens.1600000.processed.noemoticon.csv')
+   local traindatafile = paths.concat(datapath, 'traintokens.1600000.processed.noemoticon.csv')
    if not paths.filep(testdatafile) then
       print('not found ' .. testdatafile .. ', start fresh downloading...')
       local origtraindatafile = paths.concat(datapath, 'training.1600000.processed.noemoticon.csv')
@@ -59,7 +64,6 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl, showprogre
       end
       if showprogress and math.fmod(i, 100)==0 then
          xlua.progress(i, trainnum)
-         --print(i, #traincontent[i])
       end
    end
    local train_vocab, train_ivocab, train_wordfreq = dl.buildVocab(trainwords)
@@ -104,9 +108,11 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl, showprogre
       end
       if showprogress and math.fmod(i, 100)==0 then
          xlua.progress(i, #testcontent)
+         --print(i, #testcontent[i])
       end
    end
    test.vocab,  test.ivocab,  test.wordfreq  = dl.buildVocab(testwords)
+   print(test.vocat, test.ivocat, test.wordfreq)
    testwords = nil
    testcontent = nil
    collectgarbage()

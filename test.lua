@@ -501,8 +501,8 @@ function dltest.loadTwitterSentiment()
    end
    mytester:assert(vocabsize == 2393)
    --mytester:assert(not train.vocab['<OOV>'])
-   mytester:assert(train)
-   mytester:assert(test)
+   mytester:assert(train ~= nil)
+   mytester:assert(test ~= nil)
    
    if false then
       local sequence = {}
