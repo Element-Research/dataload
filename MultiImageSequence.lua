@@ -245,9 +245,11 @@ function MultiImageSequence:loadImage(path, idx, tracker)
          tracker.lH = tracker.lH or {}
          
          lW, lH = self.loadsize[idx][3], self.loadsize[idx][2]
-         -- sample a loadsize between samplesize and loadsize
-         tracker.lW[idx] = torch.round(torch.uniform(self.samplesize[idx][3], lW))
-         tracker.lH[idx] = torch.round(torch.uniform(self.samplesize[idx][2], lH))
+         local sW, sH = self.samplesize[idx][3], self.samplesize[idx][2]
+         -- sample a loadsize between samplesize and loadsize (same scale for input and target)
+         tracker.scale = idx == 1 and math.random() or tracker.scale
+         tracker.lW[idx] = torch.round(sW + tracker.scale*(lW-sW))
+         tracker.lH[idx] = torch.round(sH + tracker.scale*(lH-sH))
       end
       lW, lH = tracker.lW[idx], tracker.lH[idx]
    else
@@ -277,17 +279,17 @@ function MultiImageSequence:sampleDefault(input, target, inputpath, targetpath, 
    return input, target
 end
 
--- function to load the image, jitter it appropriately (random crops etc.)
+-- function to load the image, jitter it appropriately (random crops, etc.)
 function MultiImageSequence:sampleTrain(input, target, inputpath, targetpath, tracker)   
    local input_ = self:loadImage(inputpath, 1, tracker)
    local target_ = self:loadImage(targetpath, 2, tracker)
    
-   -- do random crop once per sequence
+   -- do random crop once per sequence (unless self.cropeverystep)
    if tracker.idx == 1 or self.cropeverystep then
       tracker.cH = math.random()
       tracker.cW = math.random()
    end
-   assert(tracker.h and tracker.w)
+   assert(tracker.cH and tracker.cW)
    
    local iW, iH = input_:size()
    local oW, oH = self.samplesize[1][3], self.samplesize[1][2]

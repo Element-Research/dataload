@@ -549,6 +549,7 @@ function dltest.MultiImageSequence()
    local samplesize = {1, 16, 16}
    local batchsize = 4
    local ds = dl.MultiImageSequence(datapath, batchsize, loadsize, samplesize)
+   ds.verbose = false
    ds.inputpattern = 'input%d.png'
    ds.targetpattern = 'target%d.png'
    ds:buildIndex()
@@ -604,6 +605,7 @@ function dltest.MultiImageSequence()
    
    local tensor = torch.LongTensor(ds:size(), 1, 16, 16)
    
+   -- test subiter
    ds:reset()
    local nstart = 0
    local startidx = 1
@@ -648,6 +650,56 @@ function dltest.MultiImageSequence()
       end
       mytester:assert(found, "missing sequence "..i)
    end
+   
+   -- create dummy images
+   local imgpath = paths.concat(datapath, 'lenna.png')
+   local lenna = image.lena():float()
+   image.save(imgpath, lenna)
+   
+   -- test sampleDefault with self.varyloadsize and rescale
+   local loadsize = {{3, 128, 128},{3, 96, 96}}
+   local samplesize = {3, 64, 64}
+   local batchsize = 4
+   local ds = dl.MultiImageSequence(datapath, batchsize, loadsize, samplesize)
+   mytester:assertTableEq(ds.samplesize[2], {3,48,48}, 0.000001)
+   ds.inputpattern = 'input%d.png'
+   ds.targetpattern = 'target%d.png'
+   ds.verbose = false
+   ds:buildIndex()
+   ds.varyloadsize = true
+   
+   local input = torch.FloatTensor(1,64,64)
+   local target = torch.FloatTensor(1,48,48)
+   local tracker = {idx=1}
+   ds:sampleDefault(input, target, imgpath, imgpath, tracker)
+   local input2 = input:clone()
+   local target2 = target:clone()
+   image.scale(input2, lenna)
+   image.scale(target2, lenna)
+   mytester:assertTensorEq(input2, input, 0.1)
+   mytester:assertTensorEq(target2, target, 0.1)
+   
+   image.save(paths.concat(datapath, 'lenna1_input.png'), input)
+   image.save(paths.concat(datapath, 'lenna1_target.png'), target)
+   
+   -- test sampleTrain
+   
+   input:zero()
+   target:zero()
+   tracker = {idx=1}
+   ds:sampleTrain(input, target, imgpath, imgpath, tracker)
+   tracker.idx = 2
+   local lenna_ = ds:loadImage(imgpath, 1, tracker)
+   local iW, iH = lenna_:size()
+   local oW, oH = 64, 64
+   local h1, w1 = math.ceil(tracker.cH*(iH-oH)), math.ceil(tracker.cW*(iW-oW))
+   local out = lenna_:crop(oW, oH, w1, h1)
+   local colorspace = 'RGB'
+   out = out:toTensor('float',colorspace,'DHW', true)
+   mytester:assertTensorEq(out, input, 0.000001)
+   
+   image.save(paths.concat(datapath, 'lenna2_input.png'), input)
+   image.save(paths.concat(datapath, 'lenna2_target.png'), target)
 end
 
 function dltest.loadPTB()
