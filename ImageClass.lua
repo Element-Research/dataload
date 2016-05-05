@@ -348,7 +348,7 @@ function ImageClass:sampleDefault(dst, path)
    local input = self:loadImage(path)
    local colorspace = self.samplesize[1] == 1 and 'I' or 'RGB'
    local out = input:toTensor('float',colorspace,'DHW', true)
-   dst:resize(out:size(1), self.samplesize[3], self.samplesize[2])
+   dst:resize(out:size(1), self.samplesize[2], self.samplesize[3])
    image.scale(dst, out)
    return dst
 end

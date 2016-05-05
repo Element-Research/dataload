@@ -483,6 +483,225 @@ function dltest.SequenceLoader()
    mytester:assert(start2 == 1000/50 + 1)
 end   
 
+-- each subfolder (seqpath) has an input and target sequence.
+-- tests :
+-- each image is loaded in the correct order;
+-- each input is aligned to its target;
+-- the mask images are inserted correctly between sequences;
+
+function dltest.MultiImageSequence()
+   local datapath = paths.concat(dl.DATA_PATH, "_unittest2_")
+   local buffer
+   
+   local function getid(img)
+      img:view(1,-1)
+      local maxid, maxval = 0, -9999
+      local i = 0
+      img:apply(function(x)
+         i = i + 1
+         if x > maxval then
+            maxid = i
+            maxval = x
+         end
+      end)
+      return maxid
+   end
+   
+   -- create dummy dataset
+   if paths.dirp(datapath) then
+      os.execute("rm -r "..datapath)
+   end
+   local inputs = torch.FloatTensor(256,1,16*16):zero()
+   local targets = torch.FloatTensor(256,1,16*16):zero()
+   for i=1,256 do
+      inputs[{i,1,i}] = 1
+      targets[{i,1,256-i+1}] = 1
+   end
+   
+   paths.mkdir(datapath)
+   
+   local seqs = {}
+   local ids = {}
+   local nframe, nseq = 0, 0
+   for seqid=1,256-6,7 do
+      nseq = nseq + 1
+      local seqdir = "seq"..seqid
+      local seqpath = paths.concat(datapath, seqdir)
+      paths.mkdir(seqpath)
+      
+      local seqlen = math.random(1,7)
+      for j=1,seqlen do
+         nframe = nframe + 1
+         local id = seqid+j-1
+         table.insert(ids, id)
+         image.save(paths.concat(seqpath, "input"..j..".png"), inputs[id]:view(1,16,16))
+         image.save(paths.concat(seqpath, "target"..j..".png"), targets[id]:view(1,16,16))
+         local input = image.load(paths.concat(seqpath, "input"..j..".png"))
+         assert(math.abs(id - getid(input)) < 0.001)
+      end
+      
+      seqs[seqdir] = {inputs:narrow(1,seqid,seqlen), targets:narrow(1,seqid,seqlen)}
+   end
+   local nsample = nframe + nseq
+   
+   -- init MultiImageSequence
+   local loadsize = {{1, 16, 16},{1, 16, 16}}
+   local samplesize = {1, 16, 16}
+   local batchsize = 4
+   local ds = dl.MultiImageSequence(datapath, batchsize, loadsize, samplesize)
+   ds.verbose = false
+   ds.inputpattern = 'input%d.png'
+   ds.targetpattern = 'target%d.png'
+   ds:buildIndex()
+   
+   mytester:assert(ds.nframe == nframe)
+   mytester:assert(#ds.seqdirs == nseq)
+   mytester:assert(ds:size() == torch.ceil(nsample/batchsize))
+   
+   local sequences = {}
+   for i, seqdir in ipairs(ds.seqdirs) do
+      local tensor = seqs[seqdir]
+      assert(tensor)
+      table.insert(sequences, tensor)
+   end
+   
+   -- test sub   
+   local inputs, targets = ds:sub(1, 15)
+   
+   local seqid, seqidx = 0, -1
+   local seq
+   for i=1,inputs:size(2) do
+      local inputs_ = inputs:select(2,i)
+      local targets_ = targets:select(2,i)
+      if seqidx ~= 0 then
+         seqid = seqid + 1
+         seq = sequences[seqid]
+         seqidx = 0
+      end
+      
+      for j=1,inputs:size(1) do
+         local inimg = inputs_[j]
+         local outimg = targets_[j]
+         
+         if seqidx == 0 then
+            --print(seqidx, inimg:sum())
+            mytester:assert(inimg:sum() == 0, "zero input mask "..i..':'..j)
+            mytester:assert(outimg:sum() == 0, "zero target mask "..i..':'..j)
+            seqidx = seqidx + 1
+         else
+            --print(seqidx, getid(seq[1][seqidx]), getid(inimg))
+            mytester:assert(getid(seq[1][seqidx]) == getid(inimg))
+            mytester:assert(getid(seq[2][seqidx]) == getid(outimg))
+            seqidx = seqidx + 1
+            if seqidx > seq[1]:size(1) then
+               seqidx = 0
+               seqid = seqid + 1
+               seq = sequences[seqid]
+            end
+         end
+         
+      end
+   end
+   
+   local tensor = torch.LongTensor(ds:size(), 1, 16, 16)
+   
+   -- test subiter
+   ds:reset()
+   local nstart = 0
+   local startidx = 1
+   for i, inputs, targets in ds:subiter(15) do
+      for k=1,inputs:size(1) do
+         for j=1,inputs:size(2) do
+            if inputs[k][j]:sum() == 0 then
+               nstart = nstart + 1
+            end
+         end
+      end
+      local stop = math.min(ds:size(), startidx + 15 - 1)
+      local size = stop - startidx + 1
+      -- copies first sequence into tensor over all iterations
+      tensor:narrow(1, startidx, size):copy(inputs:select(2,1))
+      startidx = startidx + size
+   end
+   mytester:assert(nstart >= nseq and nstart <= nseq+(batchsize*2))
+   mytester:assert(startidx == ds:size() + 1)
+   
+   local eq = torch.LongTensor()
+   
+   local tensors = {}
+   local startidx = 1
+   for idx=1,tensor:size(1) do
+      local x = tensor[idx]
+      if x:sum() == 0 and idx > 1 then
+         table.insert(tensors, tensor:sub(startidx+1,idx-1))
+         startidx = idx
+      end
+   end
+   for i, tensor in ipairs(tensors) do
+      local found = false
+      for k,sequence in pairs(sequences) do
+         if tensor:size(1) == sequence[1]:size(1) then
+            if eq:eq(tensor, sequence[1]:view(sequence[1]:size(1),1,16,16):long()):min() == 1 then
+               found = true
+               sequences[k] = nil
+               break
+            end
+         end
+      end
+      mytester:assert(found, "missing sequence "..i)
+   end
+   
+   -- create dummy images
+   local imgpath = paths.concat(datapath, 'lenna.png')
+   local lenna = image.lena():float()
+   image.save(imgpath, lenna)
+   
+   -- test sampleDefault with self.varyloadsize and rescale
+   local loadsize = {{3, 128, 128},{3, 96, 96}}
+   local samplesize = {3, 64, 64}
+   local batchsize = 4
+   local ds = dl.MultiImageSequence(datapath, batchsize, loadsize, samplesize)
+   mytester:assertTableEq(ds.samplesize[2], {3,48,48}, 0.000001)
+   ds.inputpattern = 'input%d.png'
+   ds.targetpattern = 'target%d.png'
+   ds.verbose = false
+   ds:buildIndex()
+   ds.varyloadsize = true
+   
+   local input = torch.FloatTensor(1,64,64)
+   local target = torch.FloatTensor(1,48,48)
+   local tracker = {idx=1}
+   ds:sampleDefault(input, target, imgpath, imgpath, tracker)
+   local input2 = input:clone()
+   local target2 = target:clone()
+   image.scale(input2, lenna)
+   image.scale(target2, lenna)
+   mytester:assertTensorEq(input2, input, 0.1)
+   mytester:assertTensorEq(target2, target, 0.1)
+   
+   image.save(paths.concat(datapath, 'lenna1_input.png'), input)
+   image.save(paths.concat(datapath, 'lenna1_target.png'), target)
+   
+   -- test sampleTrain
+   
+   input:zero()
+   target:zero()
+   tracker = {idx=1}
+   ds:sampleTrain(input, target, imgpath, imgpath, tracker)
+   tracker.idx = 2
+   local lenna_ = ds:loadImage(imgpath, 1, tracker)
+   local iW, iH = lenna_:size()
+   local oW, oH = 64, 64
+   local h1, w1 = math.ceil(tracker.cH*(iH-oH)), math.ceil(tracker.cW*(iW-oW))
+   local out = lenna_:crop(oW, oH, w1, h1)
+   local colorspace = 'RGB'
+   out = out:toTensor('float',colorspace,'DHW', true)
+   mytester:assertTensorEq(out, input, 0.000001)
+   
+   image.save(paths.concat(datapath, 'lenna2_input.png'), input)
+   image.save(paths.concat(datapath, 'lenna2_target.png'), target)
+end
+
 function dltest.loadPTB()
    local batchsize = 20
    local seqlen = 5
@@ -704,6 +923,8 @@ function dltest.loadGBW()
    local words = table.concat(words, ' ')
    mytester:assert(words:find('M3 money supply growth , which ran at 8.9pc in the year to August , and to bring policy interest rates , currently 2pc , above the reported inflation rate of 2.2pc. <S> THE Federal Reserve Board may want to scrutinize another statistic to gauge the health of the economy :') ~= nil)
 end
+
+--e.g. usage: th -e "dl = require 'dataload'; dl.test()"
 
 function dl.test(tests)
    math.randomseed(os.time())
