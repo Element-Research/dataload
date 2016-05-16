@@ -77,39 +77,60 @@ function MultiImageSequence:__init(datapath, batchsize, loadsize, samplesize, sa
    self:reset()
 end
 
-function MultiImageSequence:buildIndex()   
-   -- will need this package later to load images (faster than image package)
-   require 'graphicsmagick'
-   local _ = require 'moses'
-   
-   -- list of all sequence folders
-   self.seqdirs = {}
-   self.nframe = 0
-   for seqdir in paths.iterdirs(self.datapath) do
-      table.insert(self.seqdirs, seqdir)
-      local seqpath = paths.concat(self.datapath, seqdir)
-      
-      -- count number of frames
-      local t = 0
-      while true do
-         local inputpath = paths.concat(seqpath, string.format(self.inputpattern, (t+1)))
-         local targetpath = paths.concat(seqpath, string.format(self.targetpattern, (t+1)))
-         if not (paths.filep(inputpath) and paths.filep(targetpath)) then
-            break
-         end
-         t = t + 1
+function MultiImageSequence:buildIndex(cachepath, overwrite)
+   if cachepath and (not overwrite) and paths.filep(cachepath) then
+      if self.verbose then
+         print("loading cached index")
       end
-      self.nframe = self.nframe + t
+      local cache = torch.load(cachepath, 'ascii')
+      for k,v in pairs(cache) do
+         self[k] = v
+      end
+   else
+      -- will need this package later to load images (faster than image package)
+      require 'graphicsmagick'
+      local _ = require 'moses'
       
-      -- remove empty folders
-      if t == 0 then
-         table.remove(self.seqdirs) 
+      if self.verbose then
+         print(string.format("Building index. Counting number of frames"))
+      end
+      
+      -- index files
+      local a = torch.Timer()
+      local files = paths.indexdir(self.datapath, nil, nil, 'target*')
+      
+      local seqdirs = {}
+      for i=1,files:size() do
+         local filepath = files:filename(i)
+         local seqdir, idx = filepath:match("/([^/]+)/input(%d)[.][^/]+$")
+         if seqdir then
+            local seq = seqdirs[seqdir]
+            if not seq then
+               seq = {}
+               seqdirs[seqdir] = seq
+            end
+            seq[tonumber(idx)] = true
+         end
+      end
+      
+      self.seqdirs = {}
+      self.nframe = 0
+      for seqdir, seq in pairs(seqdirs) do
+         if #seq > 0 then
+            table.insert(self.seqdirs, seqdir)
+            self.nframe = self.nframe + #seq
+         end
+      end
+      
+      -- +#seqdirs because of masks between sequences
+      self.seqlen = torch.ceil((self.nframe + #self.seqdirs)/self.batchsize)
+      assert(#self.seqdirs > 0)
+      
+      if cachepath then
+         local cache = {seqdirs=seqdirs, nframe=nframe, seqlen=seqlen}
+         torch.save(cachepath, cache, "ascii")
       end
    end
-   
-   -- +#seqdirs because of masks between sequences
-   self.seqlen = torch.ceil((self.nframe + #self.seqdirs)/self.batchsize)
-   assert(#self.seqdirs > 0)
    
    if self.verbose then
       print(string.format("Found %d sequences with a total of %d frames", #self.seqdirs, self.nframe))
