@@ -5,13 +5,15 @@
 local dl = require 'dataload._env'
 local AsyncIterator, parent = torch.class('dl.AsyncIterator', 'dl.DataLoader', dl)
 
-function AsyncIterator:__init(dataset, nthread, verbose, serialmode)
+function AsyncIterator:__init(dataset, nthread, verbose, serialmode, threadInit)
    self.dataset = dataset
    assert(torch.isTypeOf(self.dataset, "dl.DataLoader"))
    self.nthread = nthread or 2
    self.verbose = verbose == 'nil' and true or verbose
    self.serialmode = serialmode or 'ascii'
    assert(self.serialmode == "ascii" or self.serialmode == "binary","Serial mode can only be acsii or binary")
+   threadInit = threadInit or function() end
+   assert(torch.type(threadInit) == 'function')
 
    -- reset that shouldn't be shared by threads
    self.dataset:reset()
@@ -33,6 +35,7 @@ function AsyncIterator:__init(dataset, nthread, verbose, serialmode)
       function()
          dl = require 'dataload'
       end,
+      threadInit,
       function(idx)
          local success, err = pcall(function()
             t = {}
