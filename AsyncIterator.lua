@@ -61,6 +61,30 @@ function AsyncIterator:__init(dataset, nthread, verbose, serialmode, threadInit)
    self.ninprogress = 0
 end
 
+function AsyncIterator:forceCollectGarbage()
+   -- Collect garbage in all worker threads
+   self.threads:synchronize()
+   self.threads:specific(true)
+   for threadId=1,self.nthread do
+      self.threads:addjob(threadId, function()
+         collectgarbage()
+      end)
+   end
+   self.threads:synchronize()
+   self.threads:specific(false)
+   -- Collect garbage in main thread
+   collectgarbage()
+end
+
+function AsyncIterator:collectgarbage()
+   self.gcdelay = self.gcdelay or 50
+   self.gccount = (self.gccount or 0) + 1
+   if self.gccount >= self.gcdelay then
+      self:forceCollectGarbage()
+      self.gccount = 0
+   end
+end
+
 function AsyncIterator:synchronize()
    self.threads:synchronize()
    while not self.recvqueue:empty() do
@@ -68,7 +92,7 @@ function AsyncIterator:synchronize()
    end
    self.ninprogress = 0
    self.querymode = nil
-   collectgarbage()
+   self:forceCollectGarbage()
 end
 
 function AsyncIterator:reset()
