@@ -403,7 +403,8 @@ dataloader = dl.MultiSequence(sequences, batchsize)
 
 This [DataLoader](#dl.DataLoader) subclass is used by the [Billion Words](#dl.loadGBW) dataset to encapsulate unordered sentences.
 The `sequences` arguments is a table or [tds.Vec](https://github.com/torch/tds#d--tdsvec--tbl) of tensors.
-Each such tensors is a single sequence independent of the others.
+Each such tensors is a single sequence independent of the others. The tensor can be multi-dimensional as long 
+as the non-sequence dimension sizes are consistent from sequence to sequence.
 
 When calling `sub(start, stop)` or `subiter(seqlen)` methods, 
 a column of the returned `inputs` and `targets` tensors (of size `seqlen x batchsize`) could 
@@ -438,7 +439,7 @@ Each directory is organized as :
 [datapath]/[seqid]/[input|target][1,2,3,...,T].jpg
 ``` 
 
-where the `datapath` is the first argument to constructor specifying the path to the data.
+where the `datapath` (first constructor argument) specifies the file system path to the data.
 That directory is expected to contain a folder for each sequence, here represented by the `seqid` variable.
 The `seqid` folder can have any name, but by default its contents are expected to contain the pattern
 `input%d.jpg` and `target%d.jpg` for input and target images, respectively.

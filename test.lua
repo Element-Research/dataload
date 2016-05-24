@@ -902,6 +902,16 @@ function dltest.MultiSequence()
       end
       mytester:assert(found)
    end
+   
+   -- test that it works with multi-dimensional sequences
+   local sequences = {}
+   for i=1,200 do
+      table.insert(sequences, torch.LongTensor(math.random(3,20), 2):random(1,100))
+   end
+   local batchsize = 4
+   local ds = dl.MultiSequence(sequences, 3)
+   local inputs, targets = ds:sub(1, 15) 
+   mytester:assertTableEq(inputs:size():totable(), {15, 3, 2}, 0.00001)
 end
 
 function dltest.loadGBW()
