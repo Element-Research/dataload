@@ -102,7 +102,7 @@ function MultiImageSequence:buildIndex(cachepath, overwrite)
       local seqdirs = {}
       for i=1,files:size() do
          local filepath = files:filename(i)
-         local seqdir, idx = filepath:match("/([^/]+)/input(%d)[.][^/]+$")
+         local seqdir, idx = filepath:match("/([^/]+)/input([%d]*)[.][^/]+$")
          if seqdir then
             local seq = seqdirs[seqdir]
             if not seq then
@@ -127,7 +127,7 @@ function MultiImageSequence:buildIndex(cachepath, overwrite)
       assert(#self.seqdirs > 0)
       
       if cachepath then
-         local cache = {seqdirs=seqdirs, nframe=nframe, seqlen=seqlen}
+         local cache = {seqdirs=self.seqdirs, nframe=self.nframe, seqlen=self.seqlen}
          torch.save(cachepath, cache, "ascii")
       end
    end

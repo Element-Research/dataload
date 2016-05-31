@@ -2,9 +2,10 @@ local dl = require 'dataload._env'
 
 -- Returns normalize preprocessing function (PPF)
 -- Estimate the per-channel mean/std on training set and caches results
-function dl.fitImageNormalize(trainset, nsample, cachepath, verbose)
+function dl.fitImageNormalize(trainset, nsample, cachepath, verbose, dim, iterator)
    nsample = nsample or 10000
-   assert(nsample > 32)
+   dim = dim or 2
+   iterator = iterator or 'sampleiter'
    local mean, std
    if cachepath and paths.filep(cachepath) then
       local meanstd = torch.load(cachepath)
@@ -21,13 +22,13 @@ function dl.fitImageNormalize(trainset, nsample, cachepath, verbose)
       end
       
       local batch
-      for i, inputs, targets in trainset:sampleiter(32, nsample) do
+      for i, inputs, targets in trainset[iterator](trainset, math.min(32, nsample), nsample) do
          assert(torch.isTensor(inputs))
-         mean = mean or torch.zeros(inputs:size(1))
+         mean = mean or torch.zeros(inputs:size(dim))
          std = std or mean:clone()
-         for j=1,inputs:size(2) do
-            mean[j] = mean[j] + inputs:select(2,j):mean()
-            std[j] = std[j] + inputs:select(2,j):std()
+         for j=1,inputs:size(dim) do
+            mean[j] = mean[j] + inputs:select(dim,j):mean()
+            std[j] = std[j] + inputs:select(dim,j):std()
          end
       end
       
@@ -52,16 +53,15 @@ function dl.fitImageNormalize(trainset, nsample, cachepath, verbose)
    end
    
    local function ppf(inputs)
-      assert(inputs:dim() == 4)
-      for i=1,inputs:size(2) do -- channels
-         inputs:select(2,i):add(-mean[i]):div(std[i]) 
+      for i=1,inputs:size(dim) do -- channels
+         inputs:select(dim,i):add(-mean[i]):div(std[i]) 
       end
       return inputs
    end
 
    if verbose then
       -- just check if mean/std look good now
-      local inputs = trainset:sample(100)
+      local inputs = trainset:sub(1,100)
       ppf(inputs)
       print('Stats of 100 randomly sampled images after normalizing. '..
             'Mean: ' .. inputs:mean().. ' Std: ' .. inputs:std())
