@@ -559,7 +559,8 @@ function dltest.MultiImageSequence()
    mytester:assert(ds:size() == torch.ceil(nsample/batchsize))
    
    local sequences = {}
-   for i, seqdir in ipairs(ds.seqdirs) do
+   for i, seqtbl in ipairs(ds.seqdirs) do
+      local seqdir, nframe = unpack(seqtbl)
       local tensor = seqs[seqdir]
       assert(tensor)
       table.insert(sequences, tensor)

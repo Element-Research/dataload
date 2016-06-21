@@ -117,7 +117,7 @@ function MultiImageSequence:buildIndex(cachepath, overwrite)
       self.nframe = 0
       for seqdir, seq in pairs(seqdirs) do
          if #seq > 0 then
-            table.insert(self.seqdirs, seqdir)
+            table.insert(self.seqdirs, {seqdir, #seq})
             self.nframe = self.nframe + #seq
          end
       end
@@ -220,17 +220,17 @@ function MultiImageSequence:sub(start, stop, inputs, targets, samplefunc)
          end
          
          if start <= seqlen then
-            local seqdir = self.seqdirs[tracker.seqid]
+            local seqdir, nframe = unpack(self.seqdirs[tracker.seqid])
             local seqpath = paths.concat(self.datapath, seqdir)
             
             local size = 0
-            while true do
-               local inputpath = paths.concat(seqpath, string.format(self.inputpattern, tracker.idx))
-               local targetpath = paths.concat(seqpath, string.format(self.targetpattern, tracker.idx))
-               if not (paths.filep(inputpath) and paths.filep(targetpath)) then
+            for i=tracker.idx,nframe do
+               local inputpath = paths.concat(seqpath, string.format(self.inputpattern, i))
+               local targetpath = paths.concat(seqpath, string.format(self.targetpattern, i))
+               
+               if i == nframe then
                   -- move on to next sequence
                   tracker.seqid = nil
-                  break
                end
                
                size = size + 1
