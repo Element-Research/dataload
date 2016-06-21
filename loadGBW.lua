@@ -41,90 +41,10 @@ function dl.loadGBW(batchsize, trainfile, datapath, srcurl, verbose)
       vocab[word] = i
    end
    
-   local success, tds = pcall(function() return require "tds" end)
-   if not success then
-      error"Missing package tds : luarocks install tds"
-   end
-   
    local loaders = {}
    for i,filename in ipairs{trainfile, 'valid_data.th7', 'test_data.th7'} do
-      
-      -- 2. load preprocessed tensor of text
-      
-      local filepath = paths.concat(datapath, filename)
-      local cachepath = filepath:gsub('th7','cache.t7')
-      
-      local seqs
-      if paths.filep(cachepath) then
-         if verbose then
-            print("loading cached "..cachepath)
-         end
-         seqs = torch.load(cachepath)
-      else
-         if verbose then
-            print("loading "..filepath)
-         end
-         -- A torch.tensor with 2 columns. First col is for storing 
-         -- start indices of sentences. Second col is for storing the
-         -- sequence of words as shuffled sentences. Sentences are
-         -- only seperated by the sentence_end delimiter.
-          
-         local raw = torch.load(filepath)
-         
-         -- count number of sentences
-         
-         local nsentence = 0
-         local sentencestart = -1
-         raw:select(2,1):apply(function(startid)
-            if startid ~= sentencestart then
-               nsentence = nsentence+1
-               sentencestart = startid
-            end
-         end)
-         
-         if verbose then
-            print"Formatting raw tensor into table of sequences"
-         end
-         
-         -- + nsentence because we are adding the <S> tokens
-         local data = torch.Tensor(raw:size(1)+nsentence)
-         seqs = tds.Vec()
-         
-         local sentencestart = 1
-         local rawidx = 0
-         local dataidx = 1
-         raw:select(2,1):apply(function(startid)
-            rawidx = rawidx + 1
-            local islastelement = (rawidx == raw:size(1))
-            if startid ~= sentencestart or islastelement then
-               if islastelement then
-                  rawidx = rawidx + 1
-               end
-               
-               local size = rawidx - sentencestart + 1 -- + 1 for <S>
-               local sequence = data:narrow(1, dataidx, size)
-               sequence[1] = sentence_start
-               
-               sequence:narrow(1,2,size-1):copy(raw[{{sentencestart, rawidx-1},2}])
-               
-               dataidx = dataidx + size
-               sentencestart = startid
-               
-               assert(sequence[sequence:size(1)] == sentence_end)
-               seqs:insert(sequence)
-            end
-         end)
-         
-         if verbose then
-            print("saving cache "..cachepath)
-         end
-         torch.save(cachepath, seqs)
-      end
-         
-      -- 3. encapsulate into MultiSequence loader
-      
-      local loader = dl.MultiSequence(seqs, batchsize[i])
-      
+      local loader = dl.MultiSequenceGBW(datapath, filename, batchsize[i], verbose)
+      -- append vocabulary and such
       loader.vocab = vocab
       loader.ivocab = ivocab
       loader.wordfreq = wordfreq
@@ -133,3 +53,89 @@ function dl.loadGBW(batchsize, trainfile, datapath, srcurl, verbose)
    
    return unpack(loaders)
 end
+
+function dl.MultiSequenceGBW(datapath, filename, batchsize, verbose)
+   local success, tds = pcall(function() return require "tds" end)
+   if not success then
+      error"Missing package tds : luarocks install tds"
+   end
+   
+   -- 2. load preprocessed tensor of text
+   
+   local filepath = paths.concat(datapath, filename)
+   local cachepath = filepath:gsub('th7','cache.t7')
+   
+   local seqs
+   if paths.filep(cachepath) then
+      if verbose then
+         print("loading cached "..cachepath)
+      end
+      seqs = torch.load(cachepath)
+   else
+      if verbose then
+         print("loading "..filepath)
+      end
+      -- A torch.tensor with 2 columns. First col is for storing 
+      -- start indices of sentences. Second col is for storing the
+      -- sequence of words as shuffled sentences. Sentences are
+      -- only seperated by the sentence_end delimiter.
+       
+      local raw = torch.load(filepath)
+      
+      -- count number of sentences
+      
+      local nsentence = 0
+      local sentencestart = -1
+      raw:select(2,1):apply(function(startid)
+         if startid ~= sentencestart then
+            nsentence = nsentence+1
+            sentencestart = startid
+         end
+      end)
+      
+      if verbose then
+         print"Formatting raw tensor into table of sequences"
+      end
+      
+      -- + nsentence because we are adding the <S> tokens
+      local data = torch.Tensor(raw:size(1)+nsentence)
+      seqs = tds.Vec()
+      
+      local sentencestart = 1
+      local rawidx = 0
+      local dataidx = 1
+      raw:select(2,1):apply(function(startid)
+         rawidx = rawidx + 1
+         local islastelement = (rawidx == raw:size(1))
+         if startid ~= sentencestart or islastelement then
+            if islastelement then
+               rawidx = rawidx + 1
+            end
+            
+            local size = rawidx - sentencestart + 1 -- + 1 for <S>
+            local sequence = data:narrow(1, dataidx, size)
+            sequence[1] = sentence_start
+            
+            sequence:narrow(1,2,size-1):copy(raw[{{sentencestart, rawidx-1},2}])
+            
+            dataidx = dataidx + size
+            sentencestart = startid
+            
+            assert(sequence[sequence:size(1)] == sentence_end)
+            seqs:insert(sequence)
+         end
+      end)
+      
+      if verbose then
+         print("saving cache "..cachepath)
+      end
+      torch.save(cachepath, seqs)
+   end
+      
+   -- 3. encapsulate into MultiSequence loader
+   
+   local loader = dl.MultiSequence(seqs, batchsize)
+   
+   return loader
+end
+
