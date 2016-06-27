@@ -12,7 +12,8 @@ The library provides the following generic data loader classes :
  * [ImageClass](#dl.ImageClass) : for image classification datasets stored in a flat folder structure;
  * [AsyncIterator](#dl.AsyncIterator) : decorates a `DataLoader` for asynchronou multi-threaded iteration;
  * [SequenceLoader](#dl.SequenceLoader) : for sequence datasets like language or time-series;
- * [MultiSequence](#dl.MultiSequence) : for shuffled sets of sequence datasets like shuffled sentences.
+ * [MultiSequence](#dl.MultiSequence) : for shuffled sets of sequence datasets like shuffled sentences;
+ * [MultiImageSequence](#dl.MultiImageSequence) : for suffled sets of sequences of input and target images.
 
 The library also provides functions for downloading specific datasets 
 and preparing them using the above loaders :
@@ -402,7 +403,8 @@ dataloader = dl.MultiSequence(sequences, batchsize)
 
 This [DataLoader](#dl.DataLoader) subclass is used by the [Billion Words](#dl.loadGBW) dataset to encapsulate unordered sentences.
 The `sequences` arguments is a table or [tds.Vec](https://github.com/torch/tds#d--tdsvec--tbl) of tensors.
-Each such tensors is a single sequence independent of the others.
+Each such tensors is a single sequence independent of the others. The tensor can be multi-dimensional as long 
+as the non-sequence dimension sizes are consistent from sequence to sequence.
 
 When calling `sub(start, stop)` or `subiter(seqlen)` methods, 
 a column of the returned `inputs` and `targets` tensors (of size `seqlen x batchsize`) could 
@@ -416,6 +418,68 @@ Note that `[ ]` is a zero mask used to seperate independent sequences.
 For most cases, the `[ ]` token is a 0. 
 Except for 1D `targets`, where it is a 1 (so that it works with `ClassNLLCriterion`). 
 
+<a name='dl.MultiImageSequence'></a>
+## MultiImageSequence
+
+```lua
+ds = dl.MultiImageSequence(datapath, batchsize, loadsize, samplesize, [samplefunc, verbose])
+``` 
+
+This `DataLoader` is used to load datasets consisting of independent sequences of
+input and target images. So basically, each independent sequence consists of 
+two sequences of the same size, one for inputs, one for targets. 
+
+As a concrete example, this `DataLoader` could be used to 
+wrap a dataset where each input is a sequence of video frames,
+and its commensurate targets are binary masks. 
+
+Like the `ImageClass` loader, `MultiImageSequence` expects images to be stored on disk.
+Each directory is organized as :
+```
+[datapath]/[seqid]/[input|target][1,2,3,...,T].jpg
+``` 
+
+where the `datapath` (first constructor argument) specifies the file system path to the data.
+That directory is expected to contain a folder for each sequence, here represented by the `seqid` variable.
+The `seqid` folder can have any name, but by default its contents are expected to contain the pattern
+`input%d.jpg` and `target%d.jpg` for input and target images, respectively.
+Internally, the `%d` is replaced with integers starting at `1` until no more images are found.
+These patterns can be replaced after construction via the `inputpattern` and `targetpattern`.
+
+Variable length sequences are natively supported.
+
+Images will be only be loaded when requested. 
+
+Like the `MultiSequence` loader, the `batchsize` must be specified during construction.
+Like the `ImageClass`, the `loadsize` argument specifies that size of to which the images are to be loaded initially. 
+These are specified as two tables  in `c x h x w` format, for inputs and targets respectively (e.g. `{{3,28,28},{1,8,8}}`).
+
+The `samplesize` specifies the returned input image size (e.g. `{3,24,24}`).
+The actual sample size of the targets cannot be provided as it will be forced to be proportional to the input's load to sample size.
+
+The `samplefunc` specifies the function to use for sampling input and target images. 
+The default value of `sampleDefault` simply resizes the images to the given input `samplesize` and the proportional target sample size.
+When `sampleTrain` is provided, a random location will be chosen for each sampled sequence.
+
+
+When calling `sub(start, stop)` the returned `input` and `target` are tensors 
+of size `seqlen x batchsize x samplesize`. Since variable length sequences are 
+natively supported, the returned `inputs` and `targets` will be separated by mask tokens (here represented by `[ ]`):
+```
+[ ] target11, target12, target13, ..., target1T [ ] target21, ...
+[ ] input11,  input12,  input13,  ..., input1T  [ ] input21, ...
+``` 
+
+The mask tokens `[ ]` represent images with nothing but zeros.
+
+For large datasets use Lua5.2 instead of LuaJIT to avoid memory errors (see [torch.ch](http://torch.ch)).
+
+The following are attributes that can be set to `true` to modify the behavior of the loader:
+
+ * `cropeverystep`: samples a random uniform crop location every time-step (instead of once per sequence)
+ * `varyloadsize`: random-uniformly samples a `loadsize` between samplesize and loadsize (this effectively scales the cropped location)
+ * `scaleeverystep`: varies `loadsize` every step instead of once per sequence
+ * `randseq`: each new sequence is chosen random uniformly
 
 <a name='dl.loadMNIST'></a>
 ## loadMNIST

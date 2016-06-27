@@ -5,13 +5,15 @@
 local dl = require 'dataload._env'
 local AsyncIterator, parent = torch.class('dl.AsyncIterator', 'dl.DataLoader', dl)
 
-function AsyncIterator:__init(dataset, nthread, verbose, serialmode)
+function AsyncIterator:__init(dataset, nthread, verbose, serialmode, threadInit)
    self.dataset = dataset
    assert(torch.isTypeOf(self.dataset, "dl.DataLoader"))
    self.nthread = nthread or 2
    self.verbose = verbose == 'nil' and true or verbose
    self.serialmode = serialmode or 'ascii'
    assert(self.serialmode == "ascii" or self.serialmode == "binary","Serial mode can only be acsii or binary")
+   threadInit = threadInit or function() end
+   assert(torch.type(threadInit) == 'function')
 
    -- reset that shouldn't be shared by threads
    self.dataset:reset()
@@ -33,6 +35,7 @@ function AsyncIterator:__init(dataset, nthread, verbose, serialmode)
       function()
          dl = require 'dataload'
       end,
+      threadInit,
       function(idx)
          local success, err = pcall(function()
             t = {}
@@ -58,6 +61,30 @@ function AsyncIterator:__init(dataset, nthread, verbose, serialmode)
    self.ninprogress = 0
 end
 
+function AsyncIterator:forceCollectGarbage()
+   -- Collect garbage in all worker threads
+   self.threads:synchronize()
+   self.threads:specific(true)
+   for threadId=1,self.nthread do
+      self.threads:addjob(threadId, function()
+         collectgarbage()
+      end)
+   end
+   self.threads:synchronize()
+   self.threads:specific(false)
+   -- Collect garbage in main thread
+   collectgarbage()
+end
+
+function AsyncIterator:collectgarbage()
+   self.gcdelay = self.gcdelay or 50
+   self.gccount = (self.gccount or 0) + 1
+   if self.gccount >= self.gcdelay then
+      self:forceCollectGarbage()
+      self.gccount = 0
+   end
+end
+
 function AsyncIterator:synchronize()
    self.threads:synchronize()
    while not self.recvqueue:empty() do
@@ -65,7 +92,7 @@ function AsyncIterator:synchronize()
    end
    self.ninprogress = 0
    self.querymode = nil
-   collectgarbage()
+   self:forceCollectGarbage()
 end
 
 function AsyncIterator:reset()
