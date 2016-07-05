@@ -19,7 +19,8 @@ local dl = require 'dataload._env'
    Recommended to use Torch with Lua installation
    (please refer to https://github.com/torch/distro for installation steps).
 --]]
-function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl, showprogress)
+function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
+                                                         showprogress)
    -- 1. arguments and defaults
    
    -- path to directory containing Twitter dataset on disk
