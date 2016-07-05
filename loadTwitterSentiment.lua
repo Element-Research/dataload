@@ -5,7 +5,9 @@ local dl = require 'dataload._env'
   Returns train, valid, test sets
 
   Description from http://help.sentiment140.com/for-students/
-   The data has been processed so that the emoticons are stripped off. Also, it's in a regular CSV format.
+   The data has been processed so that the emoticons are stripped off.
+   Also, it's in a regular CSV format.
+
    Data file format has 6 fields:
    0 - the polarity of the tweet (0 = negative, 2 = neutral, 4 = positive)
    1 - the id of the tweet (2087)
@@ -38,7 +40,7 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
    
    -- download and decompress the file if necessary
    local testdatafile = paths.concat(datapath, 
-				     'testtokens.manual.2009.06.14.csv')
+                                     'testtokens.manual.2009.06.14.csv')
    local traindatafile = paths.concat(datapath,
                              'traintokens.1600000.processed.noemoticon.csv')
    if not paths.filep(testdatafile) then
@@ -50,7 +52,8 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
       dl.downloadfile(datapath, srcurl, origtestdatafile)
       dl.decompressfile(datapath, paths.concat(datapath,
 				 'trainingandtestdata.zip'), origtestdatafile)
-      -- run tokenizer to generate training/testing data in a new CSV format this script requires
+
+      -- run tokenizer to generate training/testing data in a new CSV format
       local cmdstr = 'python twitter/twokenize.py -i ' ..origtestdatafile 
       cmdstr = cmdstr .. ' -o ' ..testdatafile
       local res = sys.execute(cmdstr)
