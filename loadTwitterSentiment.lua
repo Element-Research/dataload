@@ -63,11 +63,12 @@ function dl.loadTwitterSentiment(datapath, validRatio, scale, srcUrl,
    end
    
    -- Load Train File
+   train = {}
    if showProgress then print("Load & processing training data.") end
    local trainTweetInfos, trainTweets, allTrainWords, maxTweetLen = 
                                           dl.processTwitterCSV(trainDataFile)
    print(maxTweetLen)
-   train.vocab, train.ivocab, train.wordfreq = dl.buildVocab(allTrainWords)
+   local vocab, vocab, wordFreq = dl.buildVocab(allTrainWords)
    allTrainWords = nil
    collectgarbage()
 
@@ -76,7 +77,6 @@ function dl.loadTwitterSentiment(datapath, validRatio, scale, srcUrl,
    local testTweetInfos, testTweets, allTrainWords, maxTweetLen = 
                          dl.processTwitterCSV(testDataFile, maxTweetLen, false)
    print(maxTweetLen)
-
    return train, valid, test
 end
 
@@ -117,15 +117,15 @@ function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
    local returnAllWords = returnAllwords or true
    local filelines = io.open(filename):lines()
    for line in filelines do
+      line = line:gsub('"', '')
       local infoTokens = string.split(line, ',')
-
       local tweetInfo = {}
-      tweetInfo['polarity'] = tonumber(infoTokens[1]:tosymbol())
-      tweetInfo['id'] = tonumber(infoTokens[2]:tosymbol())
+      tweetInfo['polarity'] = tonumber(infoTokens[1])
+      tweetInfo['id'] = tonumber(infoTokens[2])
       local tweetId = tweetInfo['id']
-      tweetInfo['date'] = infoTokens[3]:tosymbol()
-      tweetInfo['query'] = infoTokens[4]:tosymbol()
-      tweetInfo['user'] = infoTokens[5]:tosymbol()
+      tweetInfo['date'] = infoTokens[3]
+      tweetInfo['query'] = infoTokens[4]
+      tweetInfo['user'] = infoTokens[5]
 
       local tweet = {}
       local tempLine = ''
@@ -136,7 +136,7 @@ function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
             tempLine = tempLine .. infoTokens[i] .. ','
          end
       end
-      tempLine = tempLine:sub(2, -2)
+
       for word in tempLine:gmatch("([^%s]+)") do
          table.insert(tweet, word)
          if returnAllWords then table.insert(allWords, word) end
