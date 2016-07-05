@@ -37,25 +37,33 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
    -- 2. load raw data
    
    -- download and decompress the file if necessary
-   local testdatafile = paths.concat(datapath, 'testtokens.manual.2009.06.14.csv')
-   local traindatafile = paths.concat(datapath, 'traintokens.1600000.processed.noemoticon.csv')
+   local testdatafile = paths.concat(datapath, 
+				     'testtokens.manual.2009.06.14.csv')
+   local traindatafile = paths.concat(datapath,
+                             'traintokens.1600000.processed.noemoticon.csv')
    if not paths.filep(testdatafile) then
       print('not found ' .. testdatafile .. ', start fresh downloading...')
-      local origtraindatafile = paths.concat(datapath, 'training.1600000.processed.noemoticon.csv')
-      local origtestdatafile = paths.concat(datapath, 'testdata.manual.2009.06.14.csv')
+      local origtraindatafile = paths.concat(datapath, 
+				'training.1600000.processed.noemoticon.csv')
+      local origtestdatafile = paths.concat(datapath,
+					    'testdata.manual.2009.06.14.csv')
       dl.downloadfile(datapath, srcurl, origtestdatafile)
-      dl.decompressfile(datapath, paths.concat(datapath, 'trainingandtestdata.zip'), origtestdatafile)
+      dl.decompressfile(datapath, paths.concat(datapath,
+				 'trainingandtestdata.zip'), origtestdatafile)
       -- run tokenizer to generate training/testing data in a new CSV format this script requires
-      local cmdstr = 'python twitter/twokenize.py -i ' ..origtestdatafile.. ' -o ' ..testdatafile
+      local cmdstr = 'python twitter/twokenize.py -i ' ..origtestdatafile 
+      cmdstr = cmdstr .. ' -o ' ..testdatafile
       local res = sys.execute(cmdstr)
-      cmdstr = 'python twitter/twokenize.py -i ' ..origtraindatafile.. ' -o ' ..traindatafile
+      cmdstr = 'python twitter/twokenize.py -i ' ..origtraindatafile
+      cmdstr = cmdstr .. ' -o ' ..traindatafile
       res = sys.execute(cmdstr)
    end
    
    -- load train file
-   local traindata, traincontent = dl.loadTwitterCSV(traindatafile, '","', ' ', showprogress)
+   local traindata, traincontent = dl.loadTwitterCSV(traindatafile, 
+                                                     '","', ' ', showprogress)
    
-   -- 3. split into train, valid test
+   -- 3. split training data into train and valid
    print('build training vocabulary')
    local train, trainwords = {}, {}
    local trainnum = math.floor((1-validratio)*#traindata)
@@ -67,17 +75,16 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
          xlua.progress(i, trainnum)
       end
    end
-   local train_vocab, train_ivocab, train_wordfreq = dl.buildVocab(trainwords)
+   train.vocab, train.ivocab, train.wordfreq = dl.buildVocab(trainwords)
    trainwords = nil
    collectgarbage()
+
    for i = 1,trainnum do
       table.insert(train, traindata[i])
       if showprogress and math.fmod(i, 100)==0 then
          xlua.progress(i, trainnum)
       end
    end
-   train.vocab, train.ivocab, train.wordfreq = train_vocab, train_ivocab, train_wordfreq 
-   collectgarbage()
     
    if showprogress then
       print('build validation vocabulary')
@@ -98,7 +105,8 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
    collectgarbage()
 
    -- load test file
-   local testdata, testcontent = dl.loadTwitterCSV(testdatafile, '","', ' ', showprogress)
+   local testdata, testcontent = dl.loadTwitterCSV(testdatafile, 
+                                                   '","', ' ', showprogress)
    if showprogress then
       print('build testing vocabulary')
    end
@@ -109,11 +117,9 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
       end
       if showprogress and math.fmod(i, 100)==0 then
          xlua.progress(i, #testcontent)
-         --print(i, #testcontent[i])
       end
    end
-   test.vocab,  test.ivocab,  test.wordfreq  = dl.buildVocab(testwords)
-   print(test.vocat, test.ivocat, test.wordfreq)
+   test.vocab, test.ivocab, test.wordfreq = dl.buildVocab(testwords)
    testwords = nil
    testcontent = nil
    collectgarbage()
