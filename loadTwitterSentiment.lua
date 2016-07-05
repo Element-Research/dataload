@@ -60,6 +60,7 @@ function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
    end
    
    -- load train file
+   dl.processTwitterCSV(traindatafile)
    local traindata, traincontent = dl.loadTwitterCSV(traindatafile, 
                                                      '","', ' ', showprogress)
    
@@ -154,6 +155,44 @@ function dl.loadTwitterCSV(filename, sep, contentsep, showprogress)
       print('# items loaded ' .. tablesize)
    end
    return fieldstable, contenttable
+end
+
+function dl.processTwitterCSV(filename)
+   local tweetsInfo = {}
+   local tweets = {}
+   local filelines = io.open(filename):lines()
+   for line in filelines do
+      local infoTokens = string.split(line, ',')
+
+      local tweetInfo = {}
+      tweetInfo['polarity'] = tonumber(infoTokens[1]:tosymbol())
+      tweetInfo['id'] = tonumber(infoTokens[2]:tosymbol())
+      local tweetId = tweetInfo['id']
+      tweetInfo['date'] = infoTokens[3]:tosymbol()
+      tweetInfo['query'] = infoTokens[4]:tosymbol()
+      tweetInfo['user'] = infoTokens[5]:tosymbol()
+
+      local tweet = {}
+      local tempLine = ''
+      for i=6,#infoTokens do
+         if i==#infoTokens then
+            tempLine = tempLine .. infoTokens[i]
+         else
+            tempLine = tempLine .. infoTokens[i] .. ','
+         end
+      end
+      tempLine = tempLine:sub(2, -2)
+      for word in tempLine:gmatch("([^%s]+)") do
+         table.insert(tweet, word)
+      end
+
+      print(tweetInfo)
+      print(tweet)
+
+      tweetsInfo[tweetId] = tweetInfo
+      tweets[tweetId] = tweet
+   end
+   return tweetsInfo, tweets
 end
 
 function dl.buildContentVocab(contenttable)
