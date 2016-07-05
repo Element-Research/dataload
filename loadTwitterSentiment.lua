@@ -21,112 +21,61 @@ local dl = require 'dataload._env'
    Recommended to use Torch with Lua installation
    (please refer to https://github.com/torch/distro for installation steps).
 --]]
-function dl.loadTwitterSentiment(datapath, validratio, scale, srcurl,
-                                                         showprogress)
+function dl.loadTwitterSentiment(datapath, validRatio, scale, srcUrl,
+                                                         showProgress)
    -- 1. arguments and defaults
    
    -- path to directory containing Twitter dataset on disk
    datapath = datapath or paths.concat(dl.DATA_PATH, 'twitter')
    -- proportion of training set to use for cross-validation.
-   validratio = validratio or 1/8
+   validRatio = validRatio or 1/8
    -- scales the values between this range
    scale = scale == nil and {0,1} or scale
    -- URL from which to download dataset if not found on disk.
-   srcurl = srcurl or 'http://cs.stanford.edu/people/alecmgo/trainingandtestdata.zip'
+   srcUrl = srcUrl or 'http://cs.stanford.edu/people/alecmgo/trainingandtestdata.zip'
    -- debug
-   local showprogress = showprogress or true --false
+   local showProgress = showProgress or true --false
    
    -- 2. load raw data
    
    -- download and decompress the file if necessary
-   local testdatafile = paths.concat(datapath, 
+   local testDataFile = paths.concat(datapath, 
                                      'testtokens.manual.2009.06.14.csv')
-   local traindatafile = paths.concat(datapath,
+   local trainDataFile = paths.concat(datapath,
                              'traintokens.1600000.processed.noemoticon.csv')
-   if not paths.filep(testdatafile) then
-      print('not found ' .. testdatafile .. ', start fresh downloading...')
-      local origtraindatafile = paths.concat(datapath, 
+   if not paths.filep(testDataFile) then
+      print('not found ' .. testDataFile .. ', start fresh downloading...')
+      local origTrainDataFile = paths.concat(datapath, 
 				'training.1600000.processed.noemoticon.csv')
-      local origtestdatafile = paths.concat(datapath,
+      local origTestDataFile = paths.concat(datapath,
 					    'testdata.manual.2009.06.14.csv')
-      dl.downloadfile(datapath, srcurl, origtestdatafile)
+      dl.downloadfile(datapath, srcUrl, origTestDataFile)
       dl.decompressfile(datapath, paths.concat(datapath,
-				 'trainingandtestdata.zip'), origtestdatafile)
+				 'trainingandtestdata.zip'), origTestDataFile)
 
       -- run tokenizer to generate training/testing data in a new CSV format
-      local cmdstr = 'python twitter/twokenize.py -i ' ..origtestdatafile 
-      cmdstr = cmdstr .. ' -o ' ..testdatafile
+      local cmdstr = 'python twitter/twokenize.py -i ' ..origTestDataFile 
+      cmdstr = cmdstr .. ' -o ' ..testDataFile
       local res = sys.execute(cmdstr)
-      cmdstr = 'python twitter/twokenize.py -i ' ..origtraindatafile
-      cmdstr = cmdstr .. ' -o ' ..traindatafile
+      cmdstr = 'python twitter/twokenize.py -i ' ..origTrainDataFile
+      cmdstr = cmdstr .. ' -o ' ..trainDataFile
       res = sys.execute(cmdstr)
    end
    
-   -- load train file
-   dl.processTwitterCSV(traindatafile)
-   local traindata, traincontent = dl.loadTwitterCSV(traindatafile, 
-                                                     '","', ' ', showprogress)
-   
-   -- 3. split training data into train and valid
-   print('build training vocabulary')
-   local train, trainwords = {}, {}
-   local trainnum = math.floor((1-validratio)*#traindata)
-   for i = 1,trainnum do
-      for j = 1,#traincontent[i] do
-         table.insert(trainwords, traincontent[i][j])
-      end
-      if showprogress and math.fmod(i, 100)==0 then
-         xlua.progress(i, trainnum)
-      end
-   end
-   train.vocab, train.ivocab, train.wordfreq = dl.buildVocab(trainwords)
-   trainwords = nil
+   -- Load Train File
+   if showProgress then print("Load & processing training data.") end
+   local trainTweetInfos, trainTweets, allTrainWords, maxTweetLen = 
+                                          dl.processTwitterCSV(trainDataFile)
+   print(maxTweetLen)
+   train.vocab, train.ivocab, train.wordfreq = dl.buildVocab(allTrainWords)
+   allTrainWords = nil
    collectgarbage()
 
-   for i = 1,trainnum do
-      table.insert(train, traindata[i])
-      if showprogress and math.fmod(i, 100)==0 then
-         xlua.progress(i, trainnum)
-      end
-   end
-    
-   if showprogress then
-      print('build validation vocabulary')
-   end
-   local valid, validwords = {}, {}
-   for i = trainnum+1,#traindata do
-      table.insert(valid, traindata[i])
-      for j = 1,#traincontent[i] do
-         table.insert(validwords, traincontent[i][j])
-      end
-      if showprogress and math.fmod(i, 100)==0 then
-         xlua.progress(i, #traindata)
-      end
-   end
-   valid.vocab, valid.ivocab, valid.wordfreq = dl.buildVocab(validwords)
-   validwords = nil
-   traincontent = nil
-   collectgarbage()
-
-   -- load test file
-   local testdata, testcontent = dl.loadTwitterCSV(testdatafile, 
-                                                   '","', ' ', showprogress)
-   if showprogress then
-      print('build testing vocabulary')
-   end
-   local test, testwords = testdata, {}
-   for i,tc in ipairs(testcontent) do
-      for j = 1,#tc do
-         table.insert(testwords, tc[j])
-      end
-      if showprogress and math.fmod(i, 100)==0 then
-         xlua.progress(i, #testcontent)
-      end
-   end
-   test.vocab, test.ivocab, test.wordfreq = dl.buildVocab(testwords)
-   testwords = nil
-   testcontent = nil
-   collectgarbage()
+   -- Load Test File
+   if showProgress then print("Load & processing testing data.") end
+   local testTweetInfos, testTweets, allTrainWords, maxTweetLen = 
+                         dl.processTwitterCSV(testDataFile, maxTweetLen, false)
+   print(maxTweetLen)
 
    return train, valid, test
 end
@@ -160,9 +109,12 @@ function dl.loadTwitterCSV(filename, sep, contentsep, showprogress)
    return fieldstable, contenttable
 end
 
-function dl.processTwitterCSV(filename)
+function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
+   local maxTweetLen = maxTweetLen or 0
    local tweetsInfo = {}
    local tweets = {}
+   local allWords = {}
+   local returnAllWords = returnAllwords or true
    local filelines = io.open(filename):lines()
    for line in filelines do
       local infoTokens = string.split(line, ',')
@@ -187,15 +139,13 @@ function dl.processTwitterCSV(filename)
       tempLine = tempLine:sub(2, -2)
       for word in tempLine:gmatch("([^%s]+)") do
          table.insert(tweet, word)
+         if returnAllWords then table.insert(allWords, word) end
       end
-
-      print(tweetInfo)
-      print(tweet)
-
+      if maxTweetLen < #tweet then maxTweetLen = #tweet end
       tweetsInfo[tweetId] = tweetInfo
       tweets[tweetId] = tweet
    end
-   return tweetsInfo, tweets
+   return tweetsInfo, tweets, allWords, maxTweetLen
 end
 
 function dl.buildContentVocab(contenttable)
