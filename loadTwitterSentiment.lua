@@ -49,8 +49,9 @@ function dl.loadTwitterSentiment(datapath, validRatio, srcUrl, showProgress)
       local origTestDataFile = paths.concat(datapath,
 					    'testdata.manual.2009.06.14.csv')
       dl.downloadfile(datapath, srcUrl, origTestDataFile)
-      dl.decompressfile(datapath, paths.concat(datapath,
-				 'trainingandtestdata.zip'), origTestDataFile)
+      dl.decompressfile(datapath, paths.concat(datapath, 
+                                               'trainingandtestdata.zip'),
+                                  origTestDataFile)
 
       -- run tokenizer to generate training/testing data in a new CSV format
       local cmdstr = 'python twitter/twokenize.py -i ' ..origTestDataFile 
