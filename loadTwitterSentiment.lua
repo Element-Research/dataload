@@ -21,21 +21,21 @@ local dl = require 'dataload._env'
    Recommended to use Torch with Lua installation
    (please refer to https://github.com/torch/distro for installation steps).
 --]]
-function dl.loadTwitterSentiment(datapath, validRatio, srcUrl, showProgress)
-   -- 1. arguments and defaults
-   
+function dl.loadTwitterSentiment(datapath, minFreq, validRatio, srcUrl,
+                                                          showProgress)
    -- path to directory containing Twitter dataset on disk
-   datapath = datapath or paths.concat(dl.DATA_PATH, 'twitter')
+   local datapath = datapath or paths.concat(dl.DATA_PATH, 'twitter')
+
+   -- Drop words with frequency less than minFreq
+   local minFreq = minFreq or 10
 
    -- proportion of training set to use for cross-validation.
-   validRatio = validRatio or 1/8
+   local validRatio = validRatio or 1/8
 
    -- URL from which to download dataset if not found on disk.
-   srcUrl = srcUrl or 'http://cs.stanford.edu/people/alecmgo/trainingandtestdata.zip'
+   local srcUrl = srcUrl or 'http://cs.stanford.edu/people/alecmgo/trainingandtestdata.zip'
    -- debug
    local showProgress = showProgress or true --false
-   
-   -- 2. load raw data
    
    -- download and decompress the file if necessary
    local testDataFile = paths.concat(datapath, 
@@ -67,7 +67,7 @@ function dl.loadTwitterSentiment(datapath, validRatio, srcUrl, showProgress)
    if showProgress then print("Load & processing training data.") end
    local trainTweetInfos, trainTweets, allTrainWords, maxTweetLen = 
                                           dl.processTwitterCSV(trainDataFile)
-   local vocab, ivocab, wordFreq = dl.buildVocab(allTrainWords)
+   local vocab, ivocab, wordFreq = dl.buildVocab(allTrainWords, minFreq)
    allTrainWords = nil
    collectgarbage()
 
@@ -75,7 +75,6 @@ function dl.loadTwitterSentiment(datapath, validRatio, srcUrl, showProgress)
    if showProgress then print("Load & processing testing data.") end
    local testTweetInfos, testTweets, allTestWords, maxTweetLen = 
                          dl.processTwitterCSV(testDataFile, maxTweetLen, false)
-   print(allTestWords)
    return vocab, ivocab, wordFreq
 end
 
@@ -84,7 +83,8 @@ function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
    local tweetsInfo = {}
    local tweets = {}
    local allWords = {}
-   local returnAllWords = returnAllwords or true
+   local returnAllWords = (returnAllWords==nil or returnAllWords==true)
+                          or returnAllWords
    local filelines = io.open(filename):lines()
    for line in filelines do
       line = line:gsub('"', '')
