@@ -27,7 +27,7 @@ function dl.loadTwitterSentiment(datapath, minFreq, validRatio, srcUrl,
    local datapath = datapath or paths.concat(dl.DATA_PATH, 'twitter')
 
    -- Drop words with frequency less than minFreq
-   local minFreq = minFreq or 10
+   local minFreq = minFreq or 0
 
    -- proportion of training set to use for cross-validation.
    local validRatio = validRatio or 1/8
@@ -63,19 +63,22 @@ function dl.loadTwitterSentiment(datapath, minFreq, validRatio, srcUrl,
    end
    
    -- Load Train File
-   train = {}
    if showProgress then print("Load & processing training data.") end
-   local trainTweetInfos, trainTweets, allTrainWords, maxTweetLen = 
-                                          dl.processTwitterCSV(trainDataFile)
+   local trainTweetInfos, trainTweets, allTrainWords,
+         maxTweetLen, noOfTrainTweets = dl.processTwitterCSV(trainDataFile)
    local vocab, ivocab, wordFreq = dl.buildVocab(allTrainWords, minFreq)
    allTrainWords = nil
    collectgarbage()
 
    -- Load Test File
    if showProgress then print("Load & processing testing data.") end
-   local testTweetInfos, testTweets, allTestWords, maxTweetLen = 
-                         dl.processTwitterCSV(testDataFile, maxTweetLen, false)
-   return vocab, ivocab, wordFreq
+   local testTweetInfos, testTweets, allTestWords,
+         maxTweetLen, noOfTestTweets = dl.processTwitterCSV(testDataFile,
+                                                       maxTweetLen, false)
+
+   -- Convert Tweets to Tensor using vocabulary
+   print(noOfTrainTweets, noOfTestTweets)
+   return trainTweets, vocab
 end
 
 function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
@@ -85,6 +88,7 @@ function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
    local allWords = {}
    local returnAllWords = (returnAllWords==nil or returnAllWords==true)
                           or returnAllWords
+   local noOfTweets = 0
    local filelines = io.open(filename):lines()
    for line in filelines do
       line = line:gsub('"', '')
@@ -114,6 +118,7 @@ function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
       if maxTweetLen < #tweet then maxTweetLen = #tweet end
       tweetsInfo[tweetId] = tweetInfo
       tweets[tweetId] = tweet
+      noOfTweets = noOfTweets + 1
    end
-   return tweetsInfo, tweets, allWords, maxTweetLen
+   return tweetsInfo, tweets, allWords, maxTweetLen, noOfTweets
 end
