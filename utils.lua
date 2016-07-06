@@ -146,7 +146,7 @@ function dl.buildVocab(tokens, minfreq)
    end
    
    if oov > 0 then
-      wordseq = wordfreq + 1
+      wordseq = wordseq + 1
       wordfreq['<OOV>'] = oov
       vocab['<OOV>'] = wordseq
       ivocab[wordseq] = '<OOV>'
