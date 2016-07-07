@@ -82,21 +82,35 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
    if showProgress then print("Tweet/text to vector") end
    if seqLen == 0 then seqLen = maxTweetLen end
    local trainTweetsTensor = torch.LongTensor(#trainTweets, seqLen):zero()
+   local trainTweetsTarget = torch.IntTensor(#trainTweets):zero()
    for i, tweet in pairs(trainTweets) do
       for j, token in pairs(tweet) do
          trainTweetsTensor[i][j] = vocab[token] or 1
          if j == seqLen then break end
       end
+      if trainTweetsInfo[i]['polarity'] == 0 then
+         trainTweetsTarget[i] = 1
+      else
+         trainTweetsTarget[i] = tweetsInfo[i]['polarity'] - 1
+      end
    end
 
    local testTweetsTensor = torch.LongTensor(#testTweets, seqLen):zero()
+   local testTweetsTarget = torch.IntTensor(#testTweets):zero()
    for i, tweet in pairs(testTweets) do
       for j, token in pairs(tweet) do
          testTweetsTensor[i][j] = vocab[token] or 1
          if j == seqLen then break end
       end
+      if testTweetsInfo[i]['polarity'] == 0 then
+         testTweetsTarget[i] = 1
+      else
+         testTweetsTarget[i] = testTweetsInfo[i]['polarity'] - 1
+      end
+
    end
-   return trainTweetsTensor, testTweetsTensor
+   return trainTweetsTensor, trainTweetsTarget,
+          testTweetsTensor, testTweetsTarget
 end
 
 function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
