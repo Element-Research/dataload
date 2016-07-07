@@ -21,13 +21,16 @@ local dl = require 'dataload._env'
    Recommended to use Torch with Lua installation
    (please refer to https://github.com/torch/distro for installation steps).
 --]]
-function dl.loadTwitterSentiment(datapath, minFreq, validRatio, srcUrl,
-                                                          showProgress)
+function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
+                                                    srcUrl, showProgress)
    -- path to directory containing Twitter dataset on disk
    local datapath = datapath or paths.concat(dl.DATA_PATH, 'twitter')
 
    -- Drop words with frequency less than minFreq
    local minFreq = minFreq or 0
+
+   -- Max Sequence length
+   local seqLen = seqLen or 0 -- If 0 then use maxTweetLen
 
    -- proportion of training set to use for cross-validation.
    local validRatio = validRatio or 1/8
@@ -65,7 +68,7 @@ function dl.loadTwitterSentiment(datapath, minFreq, validRatio, srcUrl,
    -- Load Train File
    if showProgress then print("Load & processing training data.") end
    local trainTweetInfos, trainTweets, allTrainWords,
-         maxTweetLen, noOfTrainTweets = dl.processTwitterCSV(trainDataFile)
+         maxTweetLen  = dl.processTwitterCSV(trainDataFile)
    local vocab, ivocab, wordFreq = dl.buildVocab(allTrainWords, minFreq)
    allTrainWords = nil
    collectgarbage()
@@ -73,12 +76,27 @@ function dl.loadTwitterSentiment(datapath, minFreq, validRatio, srcUrl,
    -- Load Test File
    if showProgress then print("Load & processing testing data.") end
    local testTweetInfos, testTweets, allTestWords,
-         maxTweetLen, noOfTestTweets = dl.processTwitterCSV(testDataFile,
-                                                       maxTweetLen, false)
+         maxTweetLen = dl.processTwitterCSV(testDataFile, maxTweetLen, false)
 
    -- Convert Tweets to Tensor using vocabulary
-   print(noOfTrainTweets, noOfTestTweets)
-   return trainTweets, vocab
+   if showProgress then print("Tweet/text to vector") end
+   if seqLen == 0 then seqLen = maxTweetLen end
+   local trainTweetsTensor = torch.LongTensor(#trainTweets, seqLen):zero()
+   for i, tweet in pairs(trainTweets) do
+      for j, token in pairs(tweet) do
+         trainTweetsTensor[i][j] = vocab[token] or 1
+         if j == seqLen then break end
+      end
+   end
+
+   local testTweetsTensor = torch.LongTensor(#testTweets, seqLen):zero()
+   for i, tweet in pairs(testTweets) do
+      for j, token in pairs(tweet) do
+         testTweetsTensor[i][j] = vocab[token] or 1
+         if j == seqLen then break end
+      end
+   end
+   return trainTweetsTensor, testTweetsTensor
 end
 
 function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
@@ -88,7 +106,6 @@ function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
    local allWords = {}
    local returnAllWords = (returnAllWords==nil or returnAllWords==true)
                           or returnAllWords
-   local noOfTweets = 0
    local filelines = io.open(filename):lines()
    for line in filelines do
       line = line:gsub('"', '')
@@ -116,9 +133,8 @@ function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
          if returnAllWords then table.insert(allWords, word) end
       end
       if maxTweetLen < #tweet then maxTweetLen = #tweet end
-      tweetsInfo[tweetId] = tweetInfo
-      tweets[tweetId] = tweet
-      noOfTweets = noOfTweets + 1
+      table.insert(tweetsInfo, tweetInfo)
+      table.insert(tweets, tweet)
    end
-   return tweetsInfo, tweets, allWords, maxTweetLen, noOfTweets
+   return tweetsInfo, tweets, allWords, maxTweetLen
 end
