@@ -67,7 +67,7 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
    
    -- Load Train File
    if showProgress then print("Load & processing training data.") end
-   local trainTweetInfos, trainTweets, allTrainWords,
+   local trainTweetsInfo, trainTweets, allTrainWords,
          maxTweetLen  = dl.processTwitterCSV(trainDataFile)
    local vocab, ivocab, wordFreq = dl.buildVocab(allTrainWords, minFreq)
    allTrainWords = nil
@@ -75,7 +75,7 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
 
    -- Load Test File
    if showProgress then print("Load & processing testing data.") end
-   local testTweetInfos, testTweets, allTestWords,
+   local testTweetsInfo, testTweets, allTestWords,
          maxTweetLen = dl.processTwitterCSV(testDataFile, maxTweetLen, false)
 
    -- Convert Tweets to Tensor using vocabulary
@@ -90,8 +90,10 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
       end
       if trainTweetsInfo[i]['polarity'] == 0 then
          trainTweetsTarget[i] = 1
-      else
-         trainTweetsTarget[i] = tweetsInfo[i]['polarity'] - 1
+      elseif trainTweetsInfo[i]['polarity'] == 2 then
+         trainTweetsTarget[i] = 2
+      elseif trainTweetsInfo[i]['polarity'] == 4 then
+         trainTweetsTarget[i] = 3
       end
    end
 
@@ -104,13 +106,20 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
       end
       if testTweetsInfo[i]['polarity'] == 0 then
          testTweetsTarget[i] = 1
-      else
-         testTweetsTarget[i] = testTweetsInfo[i]['polarity'] - 1
+      elseif testTweetsInfo[i]['polarity'] == 2 then
+         testTweetsTarget[i] = 2
+      elseif testTweetsInfo[i]['polarity'] == 4 then
+         testTweetsTarget[i] = 3
       end
-
    end
-   return trainTweetsTensor, trainTweetsTarget,
-          testTweetsTensor, testTweetsTarget
+
+   local tempSet = dl.TensorLoader(trainTweetsTensor, trainTweetsTarget)
+   local trainSet, validSet = tempSet:split(1-validRatio)
+   tempSet = nil
+   collectgarbage()
+   local testSet = dl.TensorLoader(testTweetsTensor, testTweetsTarget)
+
+   return trainSet, validSet, testSet
 end
 
 function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
