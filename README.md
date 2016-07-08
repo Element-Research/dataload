@@ -598,8 +598,7 @@ In total, there are about 800 thousand (unique) words in the vocabulary, which m
 ## loadTwitterSentiment
 
 ```lua
-train, valid, test, vocab, ivocab, unigram = dl.loadTwitterSentiment(
-                                             [dataPath, minFreq, seqLen,
+train, valid, test = dl.loadTwitterSentiment([dataPath, minFreq, seqLen,
                                              validRatio, srcUrl, showProgress])
 ``` 
 

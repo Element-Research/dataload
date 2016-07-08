@@ -127,7 +127,18 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
    collectgarbage()
    local testSet = dl.TensorLoader(testTweetsTensor, testTweetsTarget)
 
-   return trainSet, validSet, testSet, vocab, ivocab, unigram
+   -- Adding vocab, ivocab and unigram to sets
+   trainSet.vocab = vocab
+   validSet.vocab = vocab
+   testSet.vocab = vocab
+   trainSet.ivocab = ivocab
+   validSet.ivocab = ivocab
+   testSet.ivocab = ivocab
+   trainSet.unigram = unigram
+   validSet.unigram = unigram
+   testSet.unigram = unigram
+
+   return trainSet, validSet, testSet
 end
 
 function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)
