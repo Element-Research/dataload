@@ -21,7 +21,8 @@ and preparing them using the above loaders :
  * [loadMNIST](#dl.loadMNIST) : load the MNIST handwritten digit dataset for image classification;
  * [loadImageNet](#dl.loadImageNet) : load the ILSVRC2014 dataset for image classification;
  * [loadPTB](#dl.loadPTB) : load the Penn Tree Bank corpus for language modeling; 
- * [loadGBW](#dl.loadGBW) : load the Google Billion Words corpus for language modeling.
+ * [loadGBW](#dl.loadGBW) : load the Google Billion Words corpus for language modeling;
+ * [loadTwitterSentiment](#dl.loadTwitterSentiment) : load the Twitter sentiment data for sentiment analysis/classification (sad, neutral, happy).
  
 Also, we try to provide some useful preprocessing functions :
 
@@ -592,6 +593,14 @@ These subsets are automatically downloaded when not found on disk.
 The task consists in predicting the next word given the previous ones.
 The corpus contains approximately 30 million sentences of an average length of about 25 words. 
 In total, there are about 800 thousand (unique) words in the vocabulary, which makes it a very memory intensive problem.
+
+<a name='dl.loadTwitterSentiment'></a>
+## loadTwitterSentiment
+
+```lua
+train, valid, test = dl.loadTwitterSentiment([dataPath, minFreq, seqLen,
+                                             validRatio, srcUrl, showProgress])
+``` 
 
 <a name='dl.fitImageNormalize'></a>
 ## fitImageNormalize
