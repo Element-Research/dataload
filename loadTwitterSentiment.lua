@@ -85,7 +85,7 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
    local trainTweetsTarget = torch.IntTensor(#trainTweets):zero()
    for i, tweet in pairs(trainTweets) do
       for j, token in pairs(tweet) do
-         trainTweetsTensor[i][j] = vocab[token] or 1
+         trainTweetsTensor[i][j] = vocab[token] or 1 -- 1 -> '<OOV>'
          if j == seqLen then break end
       end
       if trainTweetsInfo[i]['polarity'] == 0 then
@@ -101,7 +101,7 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
    local testTweetsTarget = torch.IntTensor(#testTweets):zero()
    for i, tweet in pairs(testTweets) do
       for j, token in pairs(tweet) do
-         testTweetsTensor[i][j] = vocab[token] or 1
+         testTweetsTensor[i][j] = vocab[token] or 1 -- 1 -> '<OOV>'
          if j == seqLen then break end
       end
       if testTweetsInfo[i]['polarity'] == 0 then
@@ -113,13 +113,21 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
       end
    end
 
+   -- Unigram
+   local unigram = torch.LongTensor(#ivocab):zero()
+   -- make unigram distribution for nce
+   for i,word in ipairs(ivocab) do
+      unigram[i] = wordFreq[word] or 0
+   end
+
+   -- Wrap with TensorLoader class
    local tempSet = dl.TensorLoader(trainTweetsTensor, trainTweetsTarget)
    local trainSet, validSet = tempSet:split(1-validRatio)
    tempSet = nil
    collectgarbage()
    local testSet = dl.TensorLoader(testTweetsTensor, testTweetsTarget)
 
-   return trainSet, validSet, testSet
+   return trainSet, validSet, testSet, vocab, ivocab, unigram
 end
 
 function dl.processTwitterCSV(filename, maxTweetLen, returnAllWords)

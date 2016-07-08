@@ -732,7 +732,7 @@ function dltest.loadPTB()
 end
 
 function dltest.loadTwitterSentiment()
-   local train, valid, test = dl.loadTwitterSentiment()
+   local train, valid, test, vocab, ivocab, unigram = dl.loadTwitterSentiment()
    mytester:assert(train ~= nil)
    mytester:assert(valid ~= nil)
    mytester:assert(test ~= nil)
