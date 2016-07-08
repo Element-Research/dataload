@@ -24,7 +24,7 @@ local dl = require 'dataload._env'
 function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
                                                     srcUrl, showProgress)
    -- path to directory containing Twitter dataset on disk
-   local datapath = datapath or paths.concat(dl.DATA_PATH, 'twitter')
+   local datapath = datapath 
 
    -- Drop words with frequency less than minFreq
    local minFreq = minFreq or 0
