@@ -241,6 +241,7 @@ function table.tostring(tbl, newline, sort)
       end
    end
    if sort then
+      local _ = require 'moses'
       _.sort(result)
    end
    local res
