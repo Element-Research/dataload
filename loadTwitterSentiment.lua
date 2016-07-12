@@ -79,14 +79,23 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
          maxTweetLen = dl.processTwitterCSV(testDataFile, maxTweetLen, false)
 
    -- Convert Tweets to Tensor using vocabulary
+   local indx = 1
    if showProgress then print("Tweet/text to vector") end
    if seqLen == 0 then seqLen = maxTweetLen end
    local trainTweetsTensor = torch.LongTensor(#trainTweets, seqLen):zero()
    local trainTweetsTarget = torch.IntTensor(#trainTweets):zero()
    for i, tweet in pairs(trainTweets) do
-      for j, token in pairs(tweet) do
-         trainTweetsTensor[i][j] = vocab[token] or 1 -- 1 -> '<OOV>'
-         if j == seqLen then break end
+
+      --[[
+        Adjust start indx if tweet length < seqLen, so that non existant
+        words are replaced by zeros in sequence & last word is a legitimate.
+      --]]
+      if #tweet < seqLen then indx = seqLen - #tweet + 1 else indx = 1 end
+      
+      for _, token in pairs(tweet) do
+         trainTweetsTensor[i][indx] = vocab[token] or 1 -- 1 -> '<OOV>'
+         indx = indx + 1
+         if indx > seqLen then break end
       end
       if trainTweetsInfo[i]['polarity'] == 0 then
          trainTweetsTarget[i] = 1
@@ -100,9 +109,11 @@ function dl.loadTwitterSentiment(datapath, minFreq, seqLen, validRatio,
    local testTweetsTensor = torch.LongTensor(#testTweets, seqLen):zero()
    local testTweetsTarget = torch.IntTensor(#testTweets):zero()
    for i, tweet in pairs(testTweets) do
-      for j, token in pairs(tweet) do
-         testTweetsTensor[i][j] = vocab[token] or 1 -- 1 -> '<OOV>'
-         if j == seqLen then break end
+      if #tweet < seqLen then indx = seqLen - #tweet + 1 else indx = 1 end
+      for _, token in pairs(tweet) do
+         testTweetsTensor[i][indx] = vocab[token] or 1 -- 1 -> '<OOV>'
+         indx = indx + 1
+         if indx > seqLen then break end
       end
       if testTweetsInfo[i]['polarity'] == 0 then
          testTweetsTarget[i] = 1
