@@ -733,27 +733,10 @@ end
 
 function dltest.loadTwitterSentiment()
    local train, valid, test = dl.loadTwitterSentiment()
-   
-   mytester:assert(#test == 498)
-   local textsize, vocabsize = 0, 0
-   for word, wordid in pairs(test.vocab) do
-      textsize = textsize + test.wordfreq[word]
-      vocabsize = vocabsize + 1
-   end
-   mytester:assert(vocabsize == 2393)
-   --mytester:assert(not train.vocab['<OOV>'])
    mytester:assert(train ~= nil)
+   mytester:assert(valid ~= nil)
    mytester:assert(test ~= nil)
-   
-   if false then
-      local sequence = {}
-      for i,inputs,targets in valid:subiter(seqlen) do
-         for k=1,inputs:size(1) do
-            table.insert(sequence, valid.ivocab[inputs[{k,1}]] or 'WTF?')
-         end
-      end
-      print(table.concat(sequence, ' '))
-   end
+   mytester:assert(test:size() == 498)
 end
 
 function dltest.loadImageNet()
