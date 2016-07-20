@@ -114,6 +114,7 @@ end
 
 -- text utility functions
 
+-- this can be inefficent, I wouldn't use it for datasets larger than PTB
 function dl.buildVocab(tokens, minfreq)
    assert(torch.type(tokens) == 'table', 'Expecting table')
    assert(torch.type(tokens[1]) == 'string', 'Expecting table of strings')
@@ -172,6 +173,21 @@ function dl.text2tensor(tokens, vocab)
    end
    
    return tensor
+end
+
+function dl.splitString(str,sep)
+   local sep, fields = sep or ":", {}
+   local pattern = string.format("([^%s]+)", sep)
+   str:gsub(pattern, function(c) fields[#fields+1] = c end)
+   return fields
+end
+
+function dl.getNumberOfLines(filename)
+   local ctr = 0
+   for _ in io.lines(filename) do
+      ctr = ctr +1
+   end
+   return ctr
 end
 
 -- misc.

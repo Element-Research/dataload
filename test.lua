@@ -731,6 +731,23 @@ function dltest.loadPTB()
    end
 end
 
+function dltest.loadSentiment140()
+   local train, valid, test = dl.loadSentiment140()
+   mytester:assert(train ~= nil)
+   mytester:assert(valid ~= nil)
+   mytester:assert(test ~= nil)
+   mytester:assert(test:size() == 498)
+   
+   mytester:assert(train.targets:min() == 1)
+   mytester:assert(train.targets:max() == 3)
+   
+   if false then
+      for i=1,10 do
+         print(i, train.targets[i], train:tensor2text(train.inputs[i]))
+      end
+   end
+end
+
 function dltest.loadImageNet()
    local nthread = 2
    local batchsize = 200
