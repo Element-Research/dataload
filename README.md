@@ -613,7 +613,7 @@ Load the [Sentiment140](http://help.sentiment140.com/for-students/) dataset.
 This dataset can be used for sentiment analysis for microblogging websites like Twitter.
 The task is to predict the sentiment of a tweet. 
 The input is a sequence of tokenized words with a default maximum sequence length of 50 (i.e. `seqlen=50`). 
-Targets can be one of three classes that map to the sentiment of the tweet: 1 = negative, 2 = neutral, 3 = positive.
+Targets can be one of three classes that map to the sentiment of the tweet: 1 = negative, 2 = neutral, 3 = positive. The neutral tweets are not present in the training data hence we ignore them from all (train, valid & test) datasets. This results in a 2-class (1=Negative, 2=Positive) dataset.
 Tweets are tokenized using the `twitter/twokenize.py` script. 
 By default, only words with at least 3 occurrences (i.e. `minfreq=3`) in the training set are kept.
 The dataset is automatically downloaded from `srcurl`, tokenized and parsed into a tensor the first time the loader is used.
