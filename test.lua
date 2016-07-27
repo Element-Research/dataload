@@ -732,14 +732,14 @@ function dltest.loadPTB()
 end
 
 function dltest.loadSentiment140()
-   local train, valid, test = dl.loadSentiment140()
+   train, valid, test = dl.loadSentiment140()
    mytester:assert(train ~= nil)
    mytester:assert(valid ~= nil)
    mytester:assert(test ~= nil)
-   mytester:assert(test:size() == 498)
+   mytester:assert(test:size() == 359)
    
    mytester:assert(train.targets:min() == 1)
-   mytester:assert(train.targets:max() == 3)
+   mytester:assert(train.targets:max() == 2)
    
    if false then
       for i=1,10 do
