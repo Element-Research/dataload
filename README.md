@@ -22,7 +22,7 @@ and preparing them using the above loaders :
  * [loadImageNet](#dl.loadImageNet) : load the ILSVRC2014 dataset for image classification;
  * [loadPTB](#dl.loadPTB) : load the Penn Tree Bank corpus for language modeling; 
  * [loadGBW](#dl.loadGBW) : load the Google Billion Words corpus for language modeling;
- * [loadSentiment140](#dl.loadSentiment140) : load the Twitter data for sentiment analysis/classification (sad, neutral, happy).
+ * [loadSentiment140](#dl.loadSentiment140) : load the Twitter data for sentiment analysis/classification (sad, happy).
  
 Also, we try to provide some useful preprocessing functions :
 
