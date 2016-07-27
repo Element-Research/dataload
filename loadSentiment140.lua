@@ -202,11 +202,11 @@ function dl.Sentiment140Loader(filename, vocab, maxlen)
    
    local inputs = torch.LongTensor(nline, maxlen):zero()
    local targets = torch.LongTensor(nline):zero()
-   
+   local indx = 1   
    for i=1,nline do
       local inputstring = inputstrings[i]
       local inputsize = inputsizes[i]
-      local input = inputs[i]
+      local input = inputs[indx]
 
       local j = math.max(1, maxlen - inputsize + 1)
       for word in inputstring:gmatch('[^%s]+') do 
@@ -223,16 +223,21 @@ function dl.Sentiment140Loader(filename, vocab, maxlen)
       local target = targetindices[i]
       
       if target == 0 then
-         targets[i] = 1
+         targets[indx] = 1
+         indx = indx + 1
       elseif target == 2 then
-         targets[i] = 2
+         -- targets[indx] = 2 Neutral tweet not considered.
       elseif target == 4 then
-         targets[i] = 3
+         targets[indx] = 2
+         indx = indx + 1
       else
          error("Unrecognized target: "..target)
       end
       
    end
+
+   inputs = inputs[{{1, indx-1}}]
+   targets = targets[{{1, indx-1}}]
    
    local loader = dl.TensorLoader(inputs, targets)
    loader.vocab = vocab
