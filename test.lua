@@ -731,28 +731,20 @@ function dltest.loadPTB()
    end
 end
 
-function dltest.loadTwitterSentiment()
-   local train, valid, test = dl.loadTwitterSentiment()
-   
-   mytester:assert(#test == 498)
-   local textsize, vocabsize = 0, 0
-   for word, wordid in pairs(test.vocab) do
-      textsize = textsize + test.wordfreq[word]
-      vocabsize = vocabsize + 1
-   end
-   mytester:assert(vocabsize == 2393)
-   --mytester:assert(not train.vocab['<OOV>'])
+function dltest.loadSentiment140()
+   train, valid, test = dl.loadSentiment140()
    mytester:assert(train ~= nil)
+   mytester:assert(valid ~= nil)
    mytester:assert(test ~= nil)
+   mytester:assert(test:size() == 359)
+   
+   mytester:assert(train.targets:min() == 1)
+   mytester:assert(train.targets:max() == 2)
    
    if false then
-      local sequence = {}
-      for i,inputs,targets in valid:subiter(seqlen) do
-         for k=1,inputs:size(1) do
-            table.insert(sequence, valid.ivocab[inputs[{k,1}]] or 'WTF?')
-         end
+      for i=1,10 do
+         print(i, train.targets[i], train:tensor2text(train.inputs[i]))
       end
-      print(table.concat(sequence, ' '))
    end
 end
 
