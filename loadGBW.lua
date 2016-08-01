@@ -98,7 +98,7 @@ function dl.MultiSequenceGBW(datapath, filename, batchsize, verbose)
       end
       
       -- + nsentence because we are adding the <S> tokens
-      local data = torch.Tensor(raw:size(1)+nsentence)
+      local data = torch.LongTensor(raw:size(1)+nsentence)
       seqs = tds.Vec()
       
       local sentencestart = 1

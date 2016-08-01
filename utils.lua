@@ -114,6 +114,7 @@ end
 
 -- text utility functions
 
+-- this can be inefficent, I wouldn't use it for datasets larger than PTB
 function dl.buildVocab(tokens, minfreq)
    assert(torch.type(tokens) == 'table', 'Expecting table')
    assert(torch.type(tokens[1]) == 'string', 'Expecting table of strings')
@@ -146,7 +147,7 @@ function dl.buildVocab(tokens, minfreq)
    end
    
    if oov > 0 then
-      wordseq = wordfreq + 1
+      wordseq = wordseq + 1
       wordfreq['<OOV>'] = oov
       vocab['<OOV>'] = wordseq
       ivocab[wordseq] = '<OOV>'
@@ -256,6 +257,7 @@ function table.tostring(tbl, newline, sort)
       end
    end
    if sort then
+      local _ = require 'moses'
       _.sort(result)
    end
    local res
