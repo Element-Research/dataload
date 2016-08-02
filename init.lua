@@ -18,6 +18,7 @@ local dl = require 'dataload._env'
 
 require 'dataload.config'
 require 'dataload.utils'
+require 'dataload.buildBigrams'
 require 'dataload.DataLoader'
 require 'dataload.TensorLoader'
 require 'dataload.ImageClass'
