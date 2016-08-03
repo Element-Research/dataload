@@ -952,6 +952,12 @@ function dltest.loadGBW()
    mytester:assert(words:find('M3 money supply growth , which ran at 8.9pc in the year to August , and to bring policy interest rates , currently 2pc , above the reported inflation rate of 2.2pc. <S> THE Federal Reserve Board may want to scrutinize another statistic to gauge the health of the economy :') ~= nil)
 end
 
+function dltest.buildBigrams()
+   local trainset = dl.loadPTB(20)
+   local bigrams = dl.buildBigrams(trainset)
+   mytester:assert(#bigrams == #trainset.ivocab)
+end
+
 --e.g. usage: th -e "dl = require 'dataload'; dl.test()"
 
 function dl.test(tests)
