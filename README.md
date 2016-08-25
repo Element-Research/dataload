@@ -19,6 +19,7 @@ The library also provides functions for downloading specific datasets
 and preparing them using the above loaders :
 
  * [loadMNIST](#dl.loadMNIST) : load the MNIST handwritten digit dataset for image classification;
+ * [loadCIFAR10](#dl.loadCIFAR10) : load the CIFAR10 dataset for image classification;
  * [loadImageNet](#dl.loadImageNet) : load the ILSVRC2014 dataset for image classification;
  * [loadPTB](#dl.loadPTB) : load the Penn Tree Bank corpus for language modeling; 
  * [loadGBW](#dl.loadGBW) : load the Google Billion Words corpus for language modeling;
@@ -494,6 +495,23 @@ Each such loader encapsulates a part of the MNIST dataset which is
 located in `datapath` (defaults to `dl.DATA_PATH/mnist`).
 The `validratio` argument, a number between 0 and 1, 
 specifies the ratio of the 60000 training samples
+that will be allocated to the validation set. 
+The `scale` argument specifies range within which pixel values will be scaled (defaults to `{0,1}`).
+The `srcurl` specifies the URL from where the raw data can be downloaded from 
+if not located on disk.
+
+<a name='dl.loadCIFAR10'></a>
+## loadCIFAR10
+
+```lua
+train, valid, test = dl.loadCIFAR10([datapath, validratio, scale, srcurl])
+``` 
+
+Returns the training, validation and testing sets as 3 `TensorLoader` instances.
+Each such loader encapsulates a part of the CIFAR10 dataset which is 
+located in `datapath` (defaults to `dl.DATA_PATH/cifar-10-batches-t7`).
+The `validratio` argument, a number between 0 and 1, 
+specifies the ratio of the 50000 training samples
 that will be allocated to the validation set. 
 The `scale` argument specifies range within which pixel values will be scaled (defaults to `{0,1}`).
 The `srcurl` specifies the URL from where the raw data can be downloaded from 
