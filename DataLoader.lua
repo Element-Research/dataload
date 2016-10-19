@@ -5,10 +5,20 @@ function DataLoader:index(indices, inputs, targets, ...)
    error"Not Implemented"
 end
 
+
+
 function DataLoader:sample(batchsize, inputs, targets, ...)
-   self._indices = self._indices or torch.LongTensor()
-   self._indices:resize(batchsize):random(1,self:size())
-   return self:index(self._indices, inputs, targets, ...)
+    self._indices = self._indices or torch.LongTensor()
+    if ifTrain == true then
+        self._indices:resize(batchsize):random(1, self.ratioVal)
+    else
+        self._indices:resize(batchsize):random(self.ratioVal + 1, self.imagePath:size(1))
+    end
+    if self._permuteIndex then
+        return self:index(self._permuteIndex:index(1, self._indices), inputs, targets, ...)
+    else
+        return self:index(self._indices, inputs, targets, ...)
+    end
 end
 
 function DataLoader:sub(start, stop, inputs, targets, ...)
@@ -18,11 +28,17 @@ function DataLoader:sub(start, stop, inputs, targets, ...)
 end
 
 function DataLoader:shuffle()
-   error"Not Implemented"
+   self._permuteIndex = torch.randperm(self.imagePath:size(1)):long()
 end
 
 function DataLoader:split(ratio)
-   error"Not Implemented"
+     self.ratioVal = math.min(
+             math.max(
+                     math.floor(self.imagePath:size(1) * ratio),
+                     1
+                 ),
+             self.imagePath:size(1) - 1
+         )
 end
 
 -- number of samples
