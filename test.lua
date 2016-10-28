@@ -52,6 +52,49 @@ function dltest.loadMNIST()
    mytester:assertTableEq(train:tsize(false), {50000}, 0.0000001)
 end
 
+function dltest.loadCIFAR10()
+   -- To test download, the data/mnist directory should be deleted
+   local train, valid, test = dl.loadCIFAR10()
+   
+   -- test size and split
+   mytester:assert(train:size()+valid:size()+test:size() == 60000)
+   mytester:assert(torch.pointer(train.inputs:storage():data()) == torch.pointer(valid.inputs:storage():data()))
+   
+   -- test sub (and index incidently)
+   local inputs, targets = train:sub(1,100)
+   mytester:assertTableEq(inputs:size():totable(), {100,3,32,32}, 0.000001)
+   mytester:assertTableEq(targets:size():totable(), {100}, 0.000001)
+   mytester:assert(targets:min() >= 1)
+   mytester:assert(targets:max() <= 10)
+   
+   -- test sample (and index)
+   local inputs_, targets_ = inputs, targets
+   inputs, targets = train:sample(100, inputs, targets)
+   mytester:assert(torch.pointer(inputs:storage():data()) == torch.pointer(inputs_:storage():data()))
+   mytester:assert(torch.pointer(targets:storage():data()) == torch.pointer(targets_:storage():data()))
+   mytester:assertTableEq(inputs:size():totable(), {100,3,32,32}, 0.000001)
+   mytester:assertTableEq(targets:size():totable(), {100}, 0.000001)
+   mytester:assert(targets:min() >= 1)
+   mytester:assert(targets:max() <= 10)
+   mytester:assert(inputs:view(100,-1):sum(2):min() > 0)
+   
+   -- test shuffle
+   local isum, tsum = train.inputs:mean(), train.targets:mean()
+   local isum25, tsum25 = train.inputs:sub(2,5):sum(), train.targets:sub(2,5):sum()
+   train:shuffle()
+   mytester:assert(math.abs(isum - train.inputs:mean()) < 0.0000001)
+   mytester:assert(math.abs(tsum - train.targets:mean()) < 0.0000001)
+   mytester:assert(math.abs(isum25 - train.inputs:sub(2,5):sum()) > 0.00001)
+   mytester:assert(math.abs(tsum25 - train.targets:sub(2,5):sum()) > 0.00001)
+   
+   -- test inputSize and outputSize
+   local isize, tsize = train:isize(), train:tsize()
+   mytester:assertTableEq(isize, {3,32,32}, 0.0000001)
+   mytester:assert(#tsize == 0)
+   mytester:assertTableEq(train:isize(false), {41666,3,32,32}, 0.0000001)
+   mytester:assertTableEq(train:tsize(false), {41666}, 0.0000001)
+end
+
 function dltest.TensorLoader()
    -- the tensor inputs and targets are tested by loadMNIST
    -- so we test the nested tensors here.
@@ -731,28 +774,20 @@ function dltest.loadPTB()
    end
 end
 
-function dltest.loadTwitterSentiment()
-   local train, valid, test = dl.loadTwitterSentiment()
-   
-   mytester:assert(#test == 498)
-   local textsize, vocabsize = 0, 0
-   for word, wordid in pairs(test.vocab) do
-      textsize = textsize + test.wordfreq[word]
-      vocabsize = vocabsize + 1
-   end
-   mytester:assert(vocabsize == 2393)
-   --mytester:assert(not train.vocab['<OOV>'])
+function dltest.loadSentiment140()
+   train, valid, test = dl.loadSentiment140()
    mytester:assert(train ~= nil)
+   mytester:assert(valid ~= nil)
    mytester:assert(test ~= nil)
+   mytester:assert(test:size() == 359)
+   
+   mytester:assert(train.targets:min() == 1)
+   mytester:assert(train.targets:max() == 2)
    
    if false then
-      local sequence = {}
-      for i,inputs,targets in valid:subiter(seqlen) do
-         for k=1,inputs:size(1) do
-            table.insert(sequence, valid.ivocab[inputs[{k,1}]] or 'WTF?')
-         end
+      for i=1,10 do
+         print(i, train.targets[i], train:tensor2text(train.inputs[i]))
       end
-      print(table.concat(sequence, ' '))
    end
 end
 
@@ -958,6 +993,12 @@ function dltest.loadGBW()
    end
    local words = table.concat(words, ' ')
    mytester:assert(words:find('M3 money supply growth , which ran at 8.9pc in the year to August , and to bring policy interest rates , currently 2pc , above the reported inflation rate of 2.2pc. <S> THE Federal Reserve Board may want to scrutinize another statistic to gauge the health of the economy :') ~= nil)
+end
+
+function dltest.buildBigrams()
+   local trainset = dl.loadPTB(20)
+   local bigrams = dl.buildBigrams(trainset)
+   mytester:assert(#bigrams == #trainset.ivocab)
 end
 
 --e.g. usage: th -e "dl = require 'dataload'; dl.test()"

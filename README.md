@@ -19,9 +19,11 @@ The library also provides functions for downloading specific datasets
 and preparing them using the above loaders :
 
  * [loadMNIST](#dl.loadMNIST) : load the MNIST handwritten digit dataset for image classification;
+ * [loadCIFAR10](#dl.loadCIFAR10) : load the CIFAR10 dataset for image classification;
  * [loadImageNet](#dl.loadImageNet) : load the ILSVRC2014 dataset for image classification;
  * [loadPTB](#dl.loadPTB) : load the Penn Tree Bank corpus for language modeling; 
- * [loadGBW](#dl.loadGBW) : load the Google Billion Words corpus for language modeling.
+ * [loadGBW](#dl.loadGBW) : load the Google Billion Words corpus for language modeling;
+ * [loadSentiment140](#dl.loadSentiment140) : load the Twitter data for sentiment analysis/classification (sad, happy).
  
 Also, we try to provide some useful preprocessing functions :
 
@@ -498,6 +500,23 @@ The `scale` argument specifies range within which pixel values will be scaled (d
 The `srcurl` specifies the URL from where the raw data can be downloaded from 
 if not located on disk.
 
+<a name='dl.loadCIFAR10'></a>
+## loadCIFAR10
+
+```lua
+train, valid, test = dl.loadCIFAR10([datapath, validratio, scale, srcurl])
+``` 
+
+Returns the training, validation and testing sets as 3 `TensorLoader` instances.
+Each such loader encapsulates a part of the CIFAR10 dataset which is 
+located in `datapath` (defaults to `dl.DATA_PATH/cifar-10-batches-t7`).
+The `validratio` argument, a number between 0 and 1, 
+specifies the ratio of the 50000 training samples
+that will be allocated to the validation set. 
+The `scale` argument specifies range within which pixel values will be scaled (defaults to `{0,1}`).
+The `srcurl` specifies the URL from where the raw data can be downloaded from 
+if not located on disk.
+
 <a name='dl.loadPTB'></a>
 ## loadPTB
 
@@ -592,6 +611,37 @@ These subsets are automatically downloaded when not found on disk.
 The task consists in predicting the next word given the previous ones.
 The corpus contains approximately 30 million sentences of an average length of about 25 words. 
 In total, there are about 800 thousand (unique) words in the vocabulary, which makes it a very memory intensive problem.
+
+<a name='dl.loadSentiment140'></a>
+## loadSentiment140
+
+```lua
+train, valid, test = dl.loadSentiment140([datapath, minfreq, seqlen, validratio, srcurl, progress])
+
+Load & processing training data.	
+Number of tweets: 1600000	
+Vocabulary size: 155723	
+Number of occurences replaced with <OOV> token: 750575	
+Tweet corpus size (in number of tokens): 20061241	
+trainset set processed in 28.306740999222s	
+
+``` 
+
+Load the [Sentiment140](http://help.sentiment140.com/for-students/) dataset.
+This dataset can be used for sentiment analysis for microblogging websites like Twitter.
+The task is to predict the sentiment of a tweet. 
+The input is a sequence of tokenized words with a default maximum sequence length of 50 (i.e. `seqlen=50`). 
+Targets can be one of three classes that map to the sentiment of the tweet: 1 = negative, 2 = neutral, 3 = positive. The neutral tweets are not present in the training data hence we ignore them from all (train, valid & test) datasets. This results in a 2-class (1=Negative, 2=Positive) dataset.
+Tweets are tokenized using the `twitter/twokenize.py` script. 
+By default, only words with at least 3 occurrences (i.e. `minfreq=3`) in the training set are kept.
+The dataset is automatically downloaded from `srcurl`, tokenized and parsed into a tensor the first time the loader is used.
+The returned training, validation and test sets are encapsulated using the [TensorLoader](#dl.TensorLoader).
+The input is padded with zeros before the tweet when it is shorted than `seqlen`.
+
+The above is only printed when `progress=true` (the default) the first time the loader is invoked.
+The processed data is subsequently cached to speedup future loadings.
+To overwrite any cached data use `dl.overwrite=true`.
+
 
 <a name='dl.fitImageNormalize'></a>
 ## fitImageNormalize
